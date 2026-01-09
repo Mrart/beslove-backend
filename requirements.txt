@@ -1,0 +1,8 @@
+Flask==2.3.3
+Flask-SQLAlchemy==3.0.5
+Flask-CORS==4.0.0
+pycryptodome==3.18.0
+requests==2.31.0
+python-dotenv==1.0.0
+aliyun-python-sdk-core-v3
+aliyun-python-sdk-dysmsapi
