@@ -138,8 +138,12 @@ if command -v nginx &> /dev/null; then
     # 使用更简单的sed命令移除include指令
     sed -i '/include.*beslove\.conf/d' $NGINX_MAIN_CONF
     
+    # 移除任何现有的beslove.cn服务器块（如果存在）
+    sed -i '/server_name.*beslove\.cn/,/^    }$/d' $NGINX_MAIN_CONF
+    
     # 创建临时文件，包含新的服务器配置
     cat > /tmp/beslove_server_config << 'EOF'
+
     server {
         listen 80;
         server_name www.beslove.cn;
@@ -160,13 +164,10 @@ if command -v nginx &> /dev/null; then
     }
 EOF
     
-    # 使用awk将服务器配置添加到http块的末尾
-    awk '{
-        if (/^  }$/) {
-            system("cat /tmp/beslove_server_config");
-        }
-        print;
-    }' $NGINX_MAIN_CONF > $NGINX_MAIN_CONF.tmp && mv $NGINX_MAIN_CONF.tmp $NGINX_MAIN_CONF
+    # 使用sed将服务器配置插入到http块的第一个server块之后
+    # 首先找到默认server块的结束位置
+    sed -i '/^	*}	*$/d' $NGINX_MAIN_CONF 2>/dev/null
+    sed -i '/^    }$/r /tmp/beslove_server_config' $NGINX_MAIN_CONF
     
     # 清理临时文件
     rm /tmp/beslove_server_config
