@@ -16,7 +16,7 @@ fi
 
 # 定义变量
 MANUAL_NGINX_PATH="/usr/local/nginx"
-SYSTEM_NGINX_PATH="/etc/nginx"
+SYSTEM_NGINX_PATH="/usr/local/nginx/conf"
 NGINX_CONF_PATH=""
 NGINX_BIN_PATH=""
 USE_HTTPS="n"
