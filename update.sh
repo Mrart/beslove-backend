@@ -131,19 +131,52 @@ if command -v nginx &> /dev/null; then
     cp $NGINX_MAIN_CONF "$NGINX_MAIN_CONF.$(date +%Y%m%d%H%M%S).bak"
     echo "已备份当前Nginx主配置文件到: $NGINX_MAIN_CONF.$(date +%Y%m%d%H%M%S).bak"
     
-    # 移除旧的include指令和site配置文件
-    if [ -f "/usr/local/nginx/conf/beslove.conf" ]; then
-        rm /usr/local/nginx/conf/beslove.conf
-    fi
-    # 使用更简单的sed命令移除include指令
-    sed -i '/include.*beslove\.conf/d' $NGINX_MAIN_CONF
-    
-    # 移除任何现有的beslove.cn服务器块（如果存在）
-    sed -i '/server_name.*beslove\.cn/,/^    }$/d' $NGINX_MAIN_CONF
-    
-    # 创建临时文件，包含新的服务器配置
-    cat > /tmp/beslove_server_config << 'EOF'
+    # 创建一个完整的Nginx配置模板
+    cat > /tmp/nginx_template.conf << 'EOF'
+#user  nobody;
+worker_processes  1;
 
+#error_log  logs/error.log;
+#error_log  logs/error.log  notice;
+#error_log  logs/error.log  info;
+
+#pid        logs/nginx.pid;
+
+
+events {
+    multi_accept on;
+    use epoll;
+    worker_connections 1024;
+}
+
+
+http {
+    proxy_cache_path /var/cache/nginx levels=1:2 keys_zone=beslove_cache:10m max_size=100m inactive=60m use_temp_path=off;
+    reset_timedout_connection on;
+    keepalive_requests 100;
+    include       mime.types;
+    default_type  application/octet-stream;
+
+    sendfile        on;
+    keepalive_timeout  65;
+
+    # Default server block
+    server {
+        listen       80;
+        server_name  localhost;
+
+        location / {
+            root   html;
+            index  index.html index.htm;
+        }
+
+        error_page   500 502 503 504  /50x.html;
+        location = /50x.html {
+            root   html;
+        }
+    }
+
+    # BesLove backend server block
     server {
         listen 80;
         server_name www.beslove.cn;
@@ -155,28 +188,18 @@ if command -v nginx &> /dev/null; then
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
         }
-
-        # 静态文件配置（如果有的话）
-        # location /static {
-        #     alias /opt/beslove/static;
-        #     expires 30d;
-        # }
     }
+}
 EOF
     
-    # 使用sed将服务器配置插入到http块的第一个server块之后
-    # 首先找到默认server块的结束位置
-    sed -i '/^	*}	*$/d' $NGINX_MAIN_CONF 2>/dev/null
-    sed -i '/^    }$/r /tmp/beslove_server_config' $NGINX_MAIN_CONF
-    
-    # 清理临时文件
-    rm /tmp/beslove_server_config
+    # 使用完整模板替换配置文件
+    mv /tmp/nginx_template.conf $NGINX_MAIN_CONF
     
     echo "已更新Nginx主配置文件"
     
     # 测试Nginx配置
     echo "测试Nginx配置..."
-    nginx -t
+    /usr/local/nginx/sbin/nginx -t
     
     if [ $? -eq 0 ]; then
         echo "Nginx配置有效，重启服务..."
