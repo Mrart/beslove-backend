@@ -12,7 +12,7 @@ fi
 
 # 检查Nginx配置文件
 echo "\n=== 检查Nginx配置文件 ==="
-config_paths=("/www/server/nginx/conf/nginx.conf" "/etc/nginx/nginx.conf" "/usr/local/nginx/conf/nginx.conf")
+config_paths=("/usr/local/nginx/conf/nginx.conf")
 for path in "${config_paths[@]}"; do
     if [ -f "$path" ]; then
         echo "找到配置文件: $path"
@@ -26,7 +26,7 @@ done
 
 # 检查Nginx目录结构
 echo "\n=== 检查Nginx目录结构 ==="
-nginx_dirs=("/www/server/nginx" "/etc/nginx" "/usr/local/nginx")
+nginx_dirs=("/usr/local/nginx")
 for dir in "${nginx_dirs[@]}"; do
     if [ -d "$dir" ]; then
         echo "目录存在: $dir"
