@@ -133,7 +133,117 @@ configure_https() {
     SSL_CERT="$SSL_CERT_PATH"
     SSL_KEY="$SSL_KEY_PATH"
     
+    # 生成SSL会话票证密钥（如果不存在）
+    echo "\n=== 配置SSL会话票证 ==="
+    SSL_TICKET_KEY_PATH="/etc/ssl/private/nginx_ticket.key"
+    if [ ! -f "$SSL_TICKET_KEY_PATH" ]; then
+        echo "生成SSL会话票证密钥..."
+        mkdir -p "$(dirname "$SSL_TICKET_KEY_PATH")"
+        openssl rand 80 > "$SSL_TICKET_KEY_PATH"
+        chmod 600 "$SSL_TICKET_KEY_PATH"
+        echo "已生成SSL会话票证密钥: $SSL_TICKET_KEY_PATH"
+        echo "已设置密钥文件权限为600"
+    else
+        echo "SSL会话票证密钥已存在: $SSL_TICKET_KEY_PATH"
+    fi
+    
     echo "HTTPS证书配置完成"
+}
+
+# 优化Nginx主配置
+optimize_nginx_main_config() {
+    echo "\n=== 优化Nginx主配置 ==="
+    
+    # 备份主配置文件
+    if [ -f "$NGINX_CONF_PATH" ]; then
+        cp "$NGINX_CONF_PATH" "$NGINX_CONF_PATH.$(date +%Y%m%d%H%M%S).bak"
+        echo "已备份主配置文件到: $NGINX_CONF_PATH.$(date +%Y%m%d%H%M%S).bak"
+    fi
+    
+    # 计算最佳工作进程数（CPU核心数）
+    CPU_CORES=$(grep -c '^processor' /proc/cpuinfo 2>/dev/null || echo 2)
+    WORKER_PROCESSES=$CPU_CORES
+    
+    # 设置最大连接数（每个工作进程的最大连接数）
+    WORKER_CONNECTIONS=1024
+    
+    # 应用优化配置
+    
+    # 1. 设置工作进程数
+    if ! grep -q "^worker_processes" "$NGINX_CONF_PATH"; then
+        sed -i '1iworker_processes '$WORKER_PROCESSES';' "$NGINX_CONF_PATH"
+        echo "已设置工作进程数为: $WORKER_PROCESSES (匹配CPU核心数)"
+    fi
+    
+    # 2. 设置工作进程连接数
+    if grep -q "events {" "$NGINX_CONF_PATH"; then
+        if ! grep -q "worker_connections" "$NGINX_CONF_PATH"; then
+            sed -i '/events {/a\    worker_connections '$WORKER_CONNECTIONS';' "$NGINX_CONF_PATH"
+        else
+            sed -i '/worker_connections/c\    worker_connections '$WORKER_CONNECTIONS';' "$NGINX_CONF_PATH"
+        fi
+        echo "已设置每个工作进程的最大连接数为: $WORKER_CONNECTIONS"
+    fi
+    
+    # 3. 设置使用epoll事件模型
+    if grep -q "events {" "$NGINX_CONF_PATH"; then
+        if ! grep -q "use epoll;" "$NGINX_CONF_PATH"; then
+            sed -i '/events {/a\    use epoll;' "$NGINX_CONF_PATH"
+        fi
+        echo "已设置epoll事件模型"
+    fi
+    
+    # 4. 设置工作进程绑定到CPU核心
+    if grep -q "worker_processes" "$NGINX_CONF_PATH" && [ "$WORKER_PROCESSES" -gt 1 ]; then
+        if ! grep -q "worker_cpu_affinity" "$NGINX_CONF_PATH"; then
+            # 生成worker_cpu_affinity配置
+            CPU_AFFINITY=""
+            for ((i=0; i<$WORKER_PROCESSES; i++)); do
+                CPU_AFFINITY+="$(printf '%0'$WORKER_PROCESSES'b' $(($i << $i))) "
+            done
+            sed -i '/worker_processes/a\worker_cpu_affinity '$CPU_AFFINITY';' "$NGINX_CONF_PATH"
+            echo "已设置工作进程绑定到CPU核心: $CPU_AFFINITY"
+        fi
+    fi
+    
+    # 5. 启用multi_accept
+    if grep -q "events {" "$NGINX_CONF_PATH"; then
+        if ! grep -q "multi_accept" "$NGINX_CONF_PATH"; then
+            sed -i '/events {/a\    multi_accept on;' "$NGINX_CONF_PATH"
+        fi
+        echo "已启用multi_accept"
+    fi
+    
+    # 6. 设置keepalive相关参数
+    if grep -q "http {" "$NGINX_CONF_PATH"; then
+        if ! grep -q "keepalive_timeout" "$NGINX_CONF_PATH"; then
+            sed -i '/http {/a\    keepalive_timeout 65;' "$NGINX_CONF_PATH"
+        fi
+        
+        if ! grep -q "keepalive_requests" "$NGINX_CONF_PATH"; then
+            sed -i '/http {/a\    keepalive_requests 100;' "$NGINX_CONF_PATH"
+        fi
+        
+        if ! grep -q "reset_timedout_connection" "$NGINX_CONF_PATH"; then
+            sed -i '/http {/a\    reset_timedout_connection on;' "$NGINX_CONF_PATH"
+        fi
+    fi
+    
+    # 7. 设置缓存路径
+    if grep -q "http {" "$NGINX_CONF_PATH"; then
+        if ! grep -q "proxy_cache_path" "$NGINX_CONF_PATH"; then
+            # 创建缓存目录
+            PROXY_CACHE_DIR="/var/cache/nginx"
+            mkdir -p "$PROXY_CACHE_DIR"
+            chown -R nginx:nginx "$PROXY_CACHE_DIR" 2>/dev/null || true
+            chmod 700 "$PROXY_CACHE_DIR" 2>/dev/null || true
+            
+            sed -i '/http {/a\    proxy_cache_path '$PROXY_CACHE_DIR' levels=1:2 keys_zone=beslove_cache:10m max_size=100m inactive=60m use_temp_path=off;' "$NGINX_CONF_PATH"
+            echo "已设置代理缓存路径: $PROXY_CACHE_DIR"
+        fi
+    fi
+    
+    echo "Nginx主配置优化完成"
 }
 
 # 配置Nginx服务器块
@@ -160,9 +270,29 @@ configure_nginx_server() {
     echo "服务器块配置文件路径: $SERVER_CONF_PATH"
     
     # 创建HTTP服务器块配置
-    HTTP_CONFIG="server {
+HTTP_CONFIG="server {
     listen 80;
     server_name $DOMAIN;
+
+    # 性能优化
+    sendfile on;
+    tcp_nopush on;
+    tcp_nodelay on;
+    keepalive_timeout 65;
+    keepalive_requests 100;
+    client_body_timeout 12s;
+    client_header_timeout 12s;
+    reset_timedout_connection on;
+
+    # 限制请求大小
+    client_max_body_size 10M;
+
+    # Gzip压缩
+    gzip on;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level 6;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
 
     location / {
         proxy_pass http://127.0.0.1:$BACKEND_PORT;
@@ -170,12 +300,25 @@ configure_nginx_server() {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+
+        # 代理超时设置
+        proxy_connect_timeout 5s;
+        proxy_send_timeout 10s;
+        proxy_read_timeout 10s;
+        proxy_buffer_size 4k;
+        proxy_buffers 4 32k;
+        proxy_busy_buffers_size 64k;
+        proxy_temp_file_write_size 64k;
+
+        # 缓存设置
+        proxy_cache off;
+        proxy_redirect off;
     }
 }"
     
-    # 创建HTTPS服务器块配置
-    HTTPS_CONFIG="server {
-    listen 443 ssl;
+    # HTTPS配置
+HTTPS_CONFIG="server {
+    listen 443 ssl http2;
     server_name $DOMAIN;
 
     ssl_certificate $SSL_CERT;
@@ -184,12 +327,48 @@ configure_nginx_server() {
     # SSL优化配置
     ssl_session_timeout 1d;
     ssl_session_cache shared:SSL:10m;
-    ssl_session_tickets off;
+    ssl_session_tickets on;
+    ssl_session_ticket_key /etc/ssl/private/nginx_ticket.key;
 
     # 强密码套件
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers 'ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384';
     ssl_prefer_server_ciphers off;
+    ssl_ecdh_curve secp384r1:prime256v1;
+
+    # OCSP Stapling
+    ssl_stapling on;
+    ssl_stapling_verify on;
+    resolver 8.8.8.8 8.8.4.4 valid=300s;
+    resolver_timeout 5s;
+
+    # 安全头部
+    add_header X-Frame-Options SAMEORIGIN always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-XSS-Protection '1; mode=block' always;
+    add_header Content-Security-Policy "default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:; font-src 'self' data: https:; connect-src 'self' https:; frame-src 'self' https:; object-src 'none'" always;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    # 性能优化
+    sendfile on;
+    tcp_nopush on;
+    tcp_nodelay on;
+    keepalive_timeout 65;
+    keepalive_requests 100;
+    client_body_timeout 12s;
+    client_header_timeout 12s;
+    reset_timedout_connection on;
+
+    # 限制请求大小
+    client_max_body_size 10M;
+
+    # Gzip压缩
+    gzip on;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level 6;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
 
     location / {
         proxy_pass http://127.0.0.1:$BACKEND_PORT;
@@ -197,6 +376,21 @@ configure_nginx_server() {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $server_port;
+
+        # 代理超时设置
+        proxy_connect_timeout 5s;
+        proxy_send_timeout 10s;
+        proxy_read_timeout 10s;
+        proxy_buffer_size 4k;
+        proxy_buffers 4 32k;
+        proxy_busy_buffers_size 64k;
+        proxy_temp_file_write_size 64k;
+
+        # 缓存设置
+        proxy_cache off;
+        proxy_redirect off;
     }
 }"
     
@@ -352,33 +546,34 @@ start_nginx() {
 
 # 1. 检查Nginx安装情况
 if ! check_nginx_installation; then
-    # 2. 如果未安装，安装Nginx
-    echo "\nNginx未安装，是否要安装？(y/n)"
-    read -r INSTALL_NGINX
-    if [ "$INSTALL_NGINX" = "y" ] || [ "$INSTALL_NGINX" = "Y" ]; then
-        install_nginx
-    else
-        echo "Nginx未安装，无法继续配置"
-        exit 1
-    fi
+    # 2. 如果未安装，提示用户但不自动安装
+    echo "\n错误: Nginx未安装！"
+    echo "请先手动安装Nginx，然后再运行此脚本"
+    echo "或使用以下命令安装Nginx:"
+    echo "  系统安装: yum install nginx -y 或 apt-get install nginx -y"
+    echo "  手动安装: 下载源码编译到 /usr/local/nginx/"
+    exit 1
 fi
 
 # 3. 配置HTTPS
 configure_https
 
-# 4. 配置Nginx服务器块
+# 4. 优化Nginx主配置
+optimize_nginx_main_config
+
+# 5. 配置Nginx服务器块
 configure_nginx_server
 
-# 5. 配置Nginx systemd服务
+# 6. 配置Nginx systemd服务
 configure_nginx_service
 
-# 6. 测试Nginx配置
+# 7. 测试Nginx配置
 if ! test_nginx_config; then
     echo "配置错误，无法继续"
     exit 1
 fi
 
-# 7. 启动/重启Nginx
+# 8. 启动/重启Nginx
 if ! start_nginx; then
     echo "Nginx启动失败"
     exit 1
