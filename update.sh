@@ -117,8 +117,71 @@ fi
 
 echo ""
 
-# 步骤6: 启动服务
-echo "6. 启动服务..."
+# 步骤6: 更新Nginx配置
+echo "6. 更新Nginx配置..."
+
+# 定义Nginx配置路径
+NGINX_MAIN_CONF="/etc/nginx/nginx.conf"
+NGINX_SITE_CONF="/etc/nginx/conf.d/beslove.conf"
+
+# 检查Nginx是否已安装
+if command -v nginx &> /dev/null; then
+    echo "Nginx已安装，配置路径: $NGINX_MAIN_CONF"
+    
+    # 备份当前的站点配置
+    if [ -f "$NGINX_SITE_CONF" ]; then
+        cp $NGINX_SITE_CONF "$NGINX_SITE_CONF.$(date +%Y%m%d%H%M%S).bak"
+        echo "已备份当前Nginx站点配置到: $NGINX_SITE_CONF.$(date +%Y%m%d%H%M%S).bak"
+    fi
+    
+    # 更新Nginx站点配置
+    cat > $NGINX_SITE_CONF << 'EOF'
+server {
+    listen 80;
+    server_name www.beslove.cn;
+
+    location / {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # 静态文件配置（如果有的话）
+    # location /static {
+    #     alias /opt/beslove/static;
+    #     expires 30d;
+    # }
+}
+EOF
+    
+    echo "已更新Nginx站点配置: $NGINX_SITE_CONF"
+    
+    # 测试Nginx配置
+    echo "测试Nginx配置..."
+    nginx -t
+    
+    if [ $? -eq 0 ]; then
+        echo "Nginx配置有效，重启服务..."
+        systemctl restart nginx
+        
+        if [ $? -eq 0 ]; then
+            echo "Nginx服务已重启成功"
+        else
+            echo "警告: Nginx服务重启失败，请手动检查"
+        fi
+    else
+        echo "警告: Nginx配置无效，请手动检查"
+    fi
+else
+    echo "Nginx未安装，跳过配置步骤"
+fi
+
+echo ""
+
+# 步骤7: 启动服务
+echo "7. 启动服务..."
 
 # 启动应用服务
 systemctl start beslove
@@ -130,8 +193,8 @@ fi
 
 echo ""
 
-# 步骤7: 检查服务状态
-echo "7. 检查服务状态..."
+# 步骤8: 检查服务状态
+echo "8. 检查服务状态..."
 
 # 检查应用服务状态
 echo "应用服务状态:"
@@ -159,7 +222,9 @@ echo ""
 echo "更新内容:"
 echo "1. 代码已更新到最新版本"
 echo "2. 项目依赖已更新"
-echo "3. 应用服务已重启"
+echo "3. Nginx配置已更新到www.beslove.cn"
+echo "4. 应用服务已重启"
+echo "5. Nginx服务已重启（如果已安装）"
 echo ""
 echo "检查应用日志: tail -f /var/log/beslove/error.log"
 echo "检查访问日志: tail -f /var/log/beslove/access.log"
