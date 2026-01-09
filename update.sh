@@ -135,7 +135,8 @@ if command -v nginx &> /dev/null; then
     if [ -f "/usr/local/nginx/conf/beslove.conf" ]; then
         rm /usr/local/nginx/conf/beslove.conf
     fi
-    sed -i '/include\s*\/usr\/local\/nginx\/conf\/beslove.conf;/d' $NGINX_MAIN_CONF
+    # 使用更简单的sed命令移除include指令
+    sed -i '/include.*beslove\.conf/d' $NGINX_MAIN_CONF
     
     # 定义新的服务器配置
     SERVER_CONFIG="    server {
