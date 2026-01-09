@@ -243,30 +243,40 @@ firewall-cmd --reload
 
 使用 Let's Encrypt 获取免费 SSL 证书：
 
-### 方法一：使用 EPEL 仓库安装（推荐）
+### 推荐：使用 pip 安装 Certbot
+
+由于 CentOS 8 仓库配置可能存在问题，直接使用 pip 安装更为可靠：
 
 ```bash
-# 安装 EPEL 仓库
-dnf install epel-release -y
+# 更新 pip
+python3 -m pip install --upgrade pip
 
-# 启用 PowerTools 仓库（CentOS 8 需要）
-dnf config-manager --set-enabled powertools
+# 使用 pip 安装 Certbot 和 Nginx 插件
+python3 -m pip install certbot certbot-nginx
 
-# 更新仓库缓存
-dnf update -y
-
-# 安装 Certbot 和 Nginx 插件
-dnf install certbot python3-certbot-nginx -y
+# 如果 Certbot 命令不可用，创建软链接
+sudo ln -s /usr/local/bin/certbot /usr/bin/certbot 2>/dev/null || true
 ```
 
-### 方法二：使用 pip 安装（如果方法一失败）
+### 备选：修复仓库配置后安装
+
+如果您仍然希望使用仓库安装，请先修复仓库配置：
 
 ```bash
-# 使用 pip 安装 Certbot
-sudo python3 -m pip install certbot certbot-nginx
+# 备份并删除当前仓库配置
+mkdir -p /etc/yum.repos.d/backup
+mv /etc/yum.repos.d/*.repo /etc/yum.repos.d/backup/
 
-# 确保 Certbot 命令可用
-sudo ln -s /usr/local/bin/certbot /usr/bin/certbot
+# 下载阿里云仓库配置
+curl -o /etc/yum.repos.d/CentOS-Base.repo https://mirrors.aliyun.com/repo/Centos-8.repo
+curl -o /etc/yum.repos.d/epel.repo https://mirrors.aliyun.com/repo/epel-8.repo
+
+# 清理并更新仓库缓存
+dnf clean all
+dnf makecache
+
+# 安装 Certbot
+dnf install certbot python3-certbot-nginx -y
 ```
 
 ### 申请证书
