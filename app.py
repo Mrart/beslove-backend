@@ -14,6 +14,9 @@ app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(os.path.dirname(__file__), 'beslove.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+# 配置JSON响应支持中文
+app.config['JSON_AS_ASCII'] = False
+
 # 配置CORS
 CORS(app, resources={r"/*": {"origins": "*"}})
 
