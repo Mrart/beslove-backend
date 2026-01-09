@@ -199,7 +199,11 @@ optimize_nginx_main_config() {
             # 生成worker_cpu_affinity配置
             CPU_AFFINITY=""
             for ((i=0; i<$WORKER_PROCESSES; i++)); do
-                CPU_AFFINITY+="$(printf '%0'$WORKER_PROCESSES'b' $((1 << $i))) "
+                if [ $i -eq 0 ]; then
+                    CPU_AFFINITY+="$(printf '%0'$WORKER_PROCESSES'b' $((1 << $i)))"
+                else
+                    CPU_AFFINITY+=" $(printf '%0'$WORKER_PROCESSES'b' $((1 << $i)))"
+                fi
             done
             sed -i '/worker_processes/a\worker_cpu_affinity '$CPU_AFFINITY';' "$NGINX_CONF_PATH"
             echo "已设置工作进程绑定到CPU核心: $CPU_AFFINITY"
