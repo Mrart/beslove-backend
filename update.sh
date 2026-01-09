@@ -162,7 +162,7 @@ EOF
     
     # 使用awk将服务器配置添加到http块的末尾
     awk '{
-        if (/^    }$/) {
+        if (/^  }$/) {
             system("cat /tmp/beslove_server_config");
         }
         print;
