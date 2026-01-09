@@ -1,4 +1,5 @@
-from flask import request, jsonify
+from flask import request, jsonify, make_response
+import json
 from app import app, db
 from models import User, BlessingMessage
 from utils import crypto_util, sensitive_filter, validate_phone, validate_blessing_content
@@ -209,10 +210,14 @@ def get_blessing_templates():
         '谢谢你一直在我身边'
     ]
     
-    response = jsonify({
+    # 使用json.dumps控制编码
+    response_data = {
         'code': 200,
         'message': '获取成功',
         'data': {'templates': templates}
-    })
+    }
+    
+    # 创建响应，设置正确的编码
+    response = make_response(json.dumps(response_data, ensure_ascii=False))
     response.headers['Content-Type'] = 'application/json; charset=utf-8'
     return response
