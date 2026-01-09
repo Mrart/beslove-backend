@@ -266,8 +266,9 @@ configure_nginx_server() {
         SERVER_CONF_PATH="$NGINX_CONF_DIR/beslove.conf"
         # 检查主配置是否包含该文件
         if ! grep -q "beslove.conf" "$NGINX_CONF_PATH"; then
-            echo "在主配置文件中添加beslove.conf的include指令"
-            echo "include $SERVER_CONF_PATH;" >> "$NGINX_CONF_PATH"
+            echo "在主配置文件的http块中添加beslove.conf的include指令"
+            # 将include指令添加到http块内部
+            sed -i '/http {/a\    include '"$SERVER_CONF_PATH"';' "$NGINX_CONF_PATH"
         fi
     fi
     
