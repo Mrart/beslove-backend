@@ -105,7 +105,7 @@ vi .env
 source venv/bin/activate
 
 # 初始化数据库
-python -c "from app import app, db; with app.app_context(): db.create_all()"
+python init_db.py
 ```
 
 ## 配置生产环境
