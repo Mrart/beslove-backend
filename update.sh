@@ -212,30 +212,10 @@ http {
         }
     }
 
-    # HTTP to HTTPS redirect for beslove.cn
+    # BesLove backend server block (HTTP only for now)
     server {
         listen 80;
         server_name www.beslove.cn;
-        
-        # Redirect all HTTP requests to HTTPS
-        return 301 https://$host$request_uri;
-    }
-
-    # HTTPS server block for beslove.cn
-    server {
-        listen 443 ssl;
-        server_name www.beslove.cn;
-
-        # SSL certificate configuration
-        ssl_certificate /etc/letsencrypt/live/www.beslove.cn/fullchain.pem;
-        ssl_certificate_key /etc/letsencrypt/live/www.beslove.cn/privkey.pem;
-        
-        # SSL security settings
-        ssl_protocols TLSv1.2 TLSv1.3;
-        ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384;
-        ssl_prefer_server_ciphers off;
-        ssl_session_cache shared:SSL:10m;
-        ssl_session_timeout 10m;
 
         location / {
             proxy_pass http://127.0.0.1:5000;
