@@ -117,22 +117,58 @@ fi
 
 echo ""
 
-# 步骤6: 更新Nginx配置
-echo "6. 更新Nginx配置..."
+# 步骤6: 更新Nginx配置和SSL证书
+    echo "6. 更新Nginx配置和SSL证书..."
 
-# 定义Nginx配置路径
-NGINX_MAIN_CONF="/usr/local/nginx/conf/nginx.conf"
+    # 定义Nginx配置路径
+    NGINX_MAIN_CONF="/usr/local/nginx/conf/nginx.conf"
 
-# 检查Nginx是否已安装
-if command -v nginx &> /dev/null; then
-    echo "Nginx已安装，配置路径: $NGINX_MAIN_CONF"
-    
-    # 备份当前的主配置文件
-    cp $NGINX_MAIN_CONF "$NGINX_MAIN_CONF.$(date +%Y%m%d%H%M%S).bak"
-    echo "已备份当前Nginx主配置文件到: $NGINX_MAIN_CONF.$(date +%Y%m%d%H%M%S).bak"
-    
-    # 创建一个完整的Nginx配置模板
-    cat > /tmp/nginx_template.conf << 'EOF'
+    # 检查Nginx是否已安装
+    if command -v nginx &> /dev/null; then
+        echo "Nginx已安装，配置路径: $NGINX_MAIN_CONF"
+        
+        # 备份当前的主配置文件
+        cp $NGINX_MAIN_CONF "$NGINX_MAIN_CONF.$(date +%Y%m%d%H%M%S).bak"
+        echo "已备份当前Nginx主配置文件到: $NGINX_MAIN_CONF.$(date +%Y%m%d%H%M%S).bak"
+        
+        # 安装certbot (ACME客户端) 用于获取Let's Encrypt证书
+        if ! command -v certbot &> /dev/null; then
+            echo "安装certbot..."
+            yum install -y certbot
+        fi
+        
+        # 检查SSL证书是否存在
+        if [ ! -f /etc/letsencrypt/live/www.beslove.cn/fullchain.pem ]; then
+            echo "获取SSL证书..."
+            # 停止Nginx以允许certbot验证
+            systemctl stop nginx
+            
+            # 使用certbot获取证书
+            certbot certonly --standalone --preferred-challenges http -d www.beslove.cn
+            
+            if [ $? -ne 0 ]; then
+                echo "警告: SSL证书获取失败，请手动检查"
+            else
+                echo "SSL证书获取成功"
+            fi
+            
+            # 重启Nginx
+            systemctl start nginx
+        else
+            echo "SSL证书已存在，跳过获取步骤"
+        fi
+        
+        # 设置certbot自动续约
+        if ! crontab -l | grep -q "certbot renew"; then
+            echo "设置certbot自动续约..."
+            echo "0 12 * * * /usr/bin/certbot renew --post-hook 'systemctl reload nginx'" > /tmp/certbot_cron
+            crontab /tmp/certbot_cron
+            rm /tmp/certbot_cron
+            echo "certbot自动续约已设置"
+        fi
+        
+        # 创建一个完整的Nginx配置模板
+        cat > /tmp/nginx_template.conf << 'EOF'
 #user  nobody;
 worker_processes  1;
 
@@ -176,10 +212,30 @@ http {
         }
     }
 
-    # BesLove backend server block
+    # HTTP to HTTPS redirect for beslove.cn
     server {
         listen 80;
         server_name www.beslove.cn;
+        
+        # Redirect all HTTP requests to HTTPS
+        return 301 https://$host$request_uri;
+    }
+
+    # HTTPS server block for beslove.cn
+    server {
+        listen 443 ssl;
+        server_name www.beslove.cn;
+
+        # SSL certificate configuration
+        ssl_certificate /etc/letsencrypt/live/www.beslove.cn/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/www.beslove.cn/privkey.pem;
+        
+        # SSL security settings
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384;
+        ssl_prefer_server_ciphers off;
+        ssl_session_cache shared:SSL:10m;
+        ssl_session_timeout 10m;
 
         location / {
             proxy_pass http://127.0.0.1:5000;
