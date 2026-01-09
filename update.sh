@@ -122,41 +122,45 @@ echo "6. 更新Nginx配置..."
 
 # 定义Nginx配置路径
 NGINX_MAIN_CONF="/usr/local/nginx/conf/nginx.conf"
-NGINX_SITE_CONF="/usr/local/nginx/conf/beslove.conf"
 
 # 检查Nginx是否已安装
 if command -v nginx &> /dev/null; then
     echo "Nginx已安装，配置路径: $NGINX_MAIN_CONF"
     
-    # 备份当前的站点配置
-    if [ -f "$NGINX_SITE_CONF" ]; then
-        cp $NGINX_SITE_CONF "$NGINX_SITE_CONF.$(date +%Y%m%d%H%M%S).bak"
-        echo "已备份当前Nginx站点配置到: $NGINX_SITE_CONF.$(date +%Y%m%d%H%M%S).bak"
+    # 备份当前的主配置文件
+    cp $NGINX_MAIN_CONF "$NGINX_MAIN_CONF.$(date +%Y%m%d%H%M%S).bak"
+    echo "已备份当前Nginx主配置文件到: $NGINX_MAIN_CONF.$(date +%Y%m%d%H%M%S).bak"
+    
+    # 移除旧的include指令和site配置文件
+    if [ -f "/usr/local/nginx/conf/beslove.conf" ]; then
+        rm /usr/local/nginx/conf/beslove.conf
     fi
+    sed -i '/include\s*\/usr\/local\/nginx\/conf\/beslove.conf;/d' $NGINX_MAIN_CONF
     
-    # 更新Nginx站点配置
-    cat > $NGINX_SITE_CONF << 'EOF'
-server {
-    listen 80;
-    server_name www.beslove.cn;
+    # 定义新的服务器配置
+    SERVER_CONFIG="    server {
+        listen 80;
+        server_name www.beslove.cn;
 
-    location / {
-        proxy_pass http://127.0.0.1:5000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
+        location / {
+            proxy_pass http://127.0.0.1:5000;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
 
-    # 静态文件配置（如果有的话）
-    # location /static {
-    #     alias /opt/beslove/static;
-    #     expires 30d;
-    # }
-}
-EOF
+        # 静态文件配置（如果有的话）
+        # location /static {
+        #     alias /opt/beslove/static;
+        #     expires 30d;
+        # }
+    }"
     
-    echo "已更新Nginx站点配置: $NGINX_SITE_CONF"
+    # 将新的服务器配置添加到http块的末尾
+    sed -i "/^    }$/i$SERVER_CONFIG" $NGINX_MAIN_CONF
+    
+    echo "已更新Nginx主配置文件"
     
     # 测试Nginx配置
     echo "测试Nginx配置..."
