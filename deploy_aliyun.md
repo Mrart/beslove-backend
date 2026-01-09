@@ -243,12 +243,37 @@ firewall-cmd --reload
 
 使用 Let's Encrypt 获取免费 SSL 证书：
 
-```bash
-# 安装 Certbot
-dnf install certbot python3-certbot-nginx -y
+### 方法一：使用 EPEL 仓库安装（推荐）
 
-# 申请证书
-certbot --nginx -d your-domain.com
+```bash
+# 安装 EPEL 仓库
+dnf install epel-release -y
+
+# 启用 PowerTools 仓库（CentOS 8 需要）
+dnf config-manager --set-enabled powertools
+
+# 更新仓库缓存
+dnf update -y
+
+# 安装 Certbot 和 Nginx 插件
+dnf install certbot python3-certbot-nginx -y
+```
+
+### 方法二：使用 pip 安装（如果方法一失败）
+
+```bash
+# 使用 pip 安装 Certbot
+sudo python3 -m pip install certbot certbot-nginx
+
+# 确保 Certbot 命令可用
+sudo ln -s /usr/local/bin/certbot /usr/bin/certbot
+```
+
+### 申请证书
+
+```bash
+# 申请证书并自动配置 Nginx
+certbot --nginx -d your-domain.com  # 替换为您的域名
 ```
 
 按照提示完成证书申请，Certbot 会自动配置 Nginx。
