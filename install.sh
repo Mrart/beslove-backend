@@ -185,7 +185,7 @@ echo "9. 配置 Nginx..."
 cat > /etc/nginx/conf.d/beslove.conf << 'EOF'
 server {
     listen 80;
-    server_name your-domain.com;  # 请替换为您的域名
+    server_name www.beslove.cn;  # 使用指定的域名
 
     location / {
         proxy_pass http://127.0.0.1:5000;
@@ -255,7 +255,7 @@ echo "下一步操作:"
 echo "1. 请编辑 /opt/beslove/.env 文件，配置必要的环境变量"
 echo "2. 初始化数据库: cd /opt/beslove && source venv/bin/activate && python init_db.py"
 echo "3. 配置域名: 编辑 /etc/nginx/conf.d/beslove.conf 中的 server_name"
-echo "4. 配置HTTPS: 运行 certbot --nginx -d your-domain.com"
+echo "4. 配置HTTPS: 运行 certbot --nginx -d www.beslove.cn"
 echo ""
 echo "详细日志可查看:"
 echo "- 应用日志: $LOG_DIR/error.log 和 $LOG_DIR/access.log"

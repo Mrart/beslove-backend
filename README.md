@@ -339,7 +339,7 @@ systemctl status beslove
 cat > /etc/nginx/conf.d/beslove.conf << EOF
 server {
     listen 80;
-    server_name your-domain.com;
+    server_name www.beslove.cn;
 
     location / {
         proxy_pass http://127.0.0.1:5000;
@@ -410,7 +410,7 @@ dnf install certbot python3-certbot-nginx -y
 
 ```bash
 # 申请证书并自动配置 Nginx
-certbot --nginx -d your-domain.com
+certbot --nginx -d www.beslove.cn
 ```
 
 ### 日常维护

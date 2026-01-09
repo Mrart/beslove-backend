@@ -6,7 +6,7 @@ BesLove是一个祝福短信发送平台，用户可以通过微信登录，向�
 
 ## 2. API 基本信息
 
-- **基础URL**: `http://your-domain.com/api`
+- **基础URL**: `https://www.beslove.cn/api`
 - **请求格式**: JSON
 - **响应格式**: JSON
 - **认证方式**: 微信授权认证
@@ -101,7 +101,7 @@ BesLove是一个祝福短信发送平台，用户可以通过微信登录，向�
 #### 请求示例
 
 ```
-curl -X GET http://your-domain.com/api/blessing/templates
+curl -X GET https://www.beslove.cn/api/blessing/templates
 ```
 
 #### 响应示例

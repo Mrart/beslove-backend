@@ -199,7 +199,7 @@ vi /etc/nginx/conf.d/beslove.conf
 ```nginx
 server {
     listen 80;
-    server_name your-domain.com;  # 替换为您的域名
+    server_name www.beslove.cn;  # 使用指定的域名
 
     location / {
         proxy_pass http://127.0.0.1:5000;
@@ -283,7 +283,7 @@ dnf install certbot python3-certbot-nginx -y
 
 ```bash
 # 申请证书并自动配置 Nginx
-certbot --nginx -d your-domain.com  # 替换为您的域名
+certbot --nginx -d www.beslove.cn  # 使用指定的域名
 ```
 
 按照提示完成证书申请，Certbot 会自动配置 Nginx。
@@ -294,7 +294,7 @@ certbot --nginx -d your-domain.com  # 替换为您的域名
 
 ```bash
 # 测试 API 接口
-curl http://your-domain.com/api/blessing/templates
+curl https://www.beslove.cn/api/blessing/templates
 ```
 
 ## 监控和维护
@@ -365,7 +365,7 @@ cp /opt/beslove/beslove.db /backup/beslove_$(date +%Y%m%d_%H%M%S).db
 ---
 
 **部署完成后，您的 BesLove 后端应用将运行在：**
-- 主域名：http://your-domain.com
-- API 接口：http://your-domain.com/api/
+- 主域名：https://www.beslove.cn
+- API 接口：https://www.beslove.cn/api/
 
 祝您使用愉快！
