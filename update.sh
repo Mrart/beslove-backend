@@ -121,8 +121,8 @@ echo ""
 echo "6. 更新Nginx配置..."
 
 # 定义Nginx配置路径
-NGINX_MAIN_CONF="/etc/nginx/nginx.conf"
-NGINX_SITE_CONF="/etc/nginx/conf.d/beslove.conf"
+NGINX_MAIN_CONF="/usr/local/nginx/conf/nginx.conf"
+NGINX_SITE_CONF="/usr/local/nginx/conf/beslove.conf"
 
 # 检查Nginx是否已安装
 if command -v nginx &> /dev/null; then
