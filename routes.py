@@ -18,7 +18,8 @@ def wx_login():
         iv = data.get('iv')
         
         if not code or not encrypted_data or not iv:
-            response = jsonify({'code': 400, 'message': '参数错误'})
+            response_data = {'code': 400, 'message': '参数错误'}
+            response = make_response(json.dumps(response_data, ensure_ascii=False))
             response.headers['Content-Type'] = 'application/json; charset=utf-8'
             return response
         
@@ -28,7 +29,8 @@ def wx_login():
         wx_result = wx_response.json()
         
         if 'errcode' in wx_result:
-            response = jsonify({'code': 400, 'message': '微信登录失败'})
+            response_data = {'code': 400, 'message': '微信登录失败'}
+            response = make_response(json.dumps(response_data, ensure_ascii=False))
             response.headers['Content-Type'] = 'application/json; charset=utf-8'
             return response
         
@@ -53,20 +55,22 @@ def wx_login():
             db.session.commit()
         
         # 4. 返回登录结果
-        response = jsonify({
+        response_data = {
             'code': 200,
             'message': '登录成功',
             'data': {
                 'openid': openid,
                 'phone': phone_number  # 实际项目中不应返回完整手机号
             }
-        })
+        }
+        response = make_response(json.dumps(response_data, ensure_ascii=False))
         response.headers['Content-Type'] = 'application/json; charset=utf-8'
         return response
         
     except Exception as e:
         app.logger.error(f'微信登录失败: {str(e)}')
-        response = jsonify({'code': 500, 'message': '服务器内部错误'})
+        response_data = {'code': 500, 'message': '服务器内部错误'}
+        response = make_response(json.dumps(response_data, ensure_ascii=False))
         response.headers['Content-Type'] = 'application/json; charset=utf-8'
         return response
 
@@ -81,14 +85,16 @@ def send_blessing():
         content = data.get('content')
         
         if not sender_openid or not receiver_phone or not content:
-            response = jsonify({'code': 400, 'message': '参数错误'})
+            response_data = {'code': 400, 'message': '参数错误'}
+            response = make_response(json.dumps(response_data, ensure_ascii=False))
             response.headers['Content-Type'] = 'application/json; charset=utf-8'
             return response
         
         # 1. 获取发送者信息
         sender = User.query.filter_by(openid=sender_openid).first()
         if not sender:
-            response = jsonify({'code': 401, 'message': '用户未登录'})
+            response_data = {'code': 401, 'message': '用户未登录'}
+            response = make_response(json.dumps(response_data, ensure_ascii=False))
             response.headers['Content-Type'] = 'application/json; charset=utf-8'
             return response
         
@@ -96,25 +102,29 @@ def send_blessing():
         
         # 2. 验证手机号
         if not validate_phone(receiver_phone):
-            response = jsonify({'code': 400, 'message': '手机号格式不正确'})
+            response_data = {'code': 400, 'message': '手机号格式不正确'}
+            response = make_response(json.dumps(response_data, ensure_ascii=False))
             response.headers['Content-Type'] = 'application/json; charset=utf-8'
             return response
         
         # 3. 禁止发送给自己
         if receiver_phone == sender_phone:
-            response = jsonify({'code': 400, 'message': '不能发送给自己'})
+            response_data = {'code': 400, 'message': '不能发送给自己'}
+            response = make_response(json.dumps(response_data, ensure_ascii=False))
             response.headers['Content-Type'] = 'application/json; charset=utf-8'
             return response
         
         # 4. 验证祝福内容
         if not validate_blessing_content(content):
-            response = jsonify({'code': 400, 'message': '祝福内容不能为空且不能超过80个字符'})
+            response_data = {'code': 400, 'message': '祝福内容不能为空且不能超过80个字符'}
+            response = make_response(json.dumps(response_data, ensure_ascii=False))
             response.headers['Content-Type'] = 'application/json; charset=utf-8'
             return response
         
         # 5. 敏感词检查
         if sensitive_filter.contains_sensitive_word(content):
-            response = jsonify({'code': 400, 'message': '祝福内容包含敏感词'})
+            response_data = {'code': 400, 'message': '祝福内容包含敏感词'}
+            response = make_response(json.dumps(response_data, ensure_ascii=False))
             response.headers['Content-Type'] = 'application/json; charset=utf-8'
             return response
         
@@ -128,7 +138,8 @@ def send_blessing():
         ).count()
         
         if sender_count >= sender_limit:
-            response = jsonify({'code': 400, 'message': '您今天发送的祝福已达上限'})
+            response_data = {'code': 400, 'message': '您今天发送的祝福已达上限'}
+            response = make_response(json.dumps(response_data, ensure_ascii=False))
             response.headers['Content-Type'] = 'application/json; charset=utf-8'
             return response
         
@@ -143,7 +154,8 @@ def send_blessing():
         ).count()
         
         if receiver_count >= receiver_limit:
-            response = jsonify({'code': 400, 'message': '该接收者今天接收的祝福已达上限'})
+            response_data = {'code': 400, 'message': '该接收者今天接收的祝福已达上限'}
+            response = make_response(json.dumps(response_data, ensure_ascii=False))
             response.headers['Content-Type'] = 'application/json; charset=utf-8'
             return response
         
@@ -167,21 +179,23 @@ def send_blessing():
                 blessing.status = 'sent'
                 db.session.commit()
                 
-                response = jsonify({
+                response_data = {
                     'code': 200,
                     'message': '祝福发送成功',
                     'data': {
                         'receiver_phone': receiver_phone[:3] + '****' + receiver_phone[-4:],
                         'message': '愿TA一眼认出是你'
                     }
-                })
+                }
+                response = make_response(json.dumps(response_data, ensure_ascii=False))
                 response.headers['Content-Type'] = 'application/json; charset=utf-8'
                 return response
             else:
                 blessing.status = 'failed'
                 db.session.commit()
                 app.logger.error(f'短信发送失败: {message}')
-                response = jsonify({'code': 500, 'message': '短信发送失败，请稍后重试'})
+                response_data = {'code': 500, 'message': '短信发送失败，请稍后重试'}
+                response = make_response(json.dumps(response_data, ensure_ascii=False))
                 response.headers['Content-Type'] = 'application/json; charset=utf-8'
                 return response
                 
@@ -189,13 +203,15 @@ def send_blessing():
             app.logger.error(f'短信发送异常: {str(e)}')
             blessing.status = 'failed'
             db.session.commit()
-            response = jsonify({'code': 500, 'message': '短信发送失败，请稍后重试'})
+            response_data = {'code': 500, 'message': '短信发送失败，请稍后重试'}
+            response = make_response(json.dumps(response_data, ensure_ascii=False))
             response.headers['Content-Type'] = 'application/json; charset=utf-8'
             return response
         
     except Exception as e:
         app.logger.error(f'发送祝福失败: {str(e)}')
-        response = jsonify({'code': 500, 'message': '服务器内部错误'})
+        response_data = {'code': 500, 'message': '服务器内部错误'}
+        response = make_response(json.dumps(response_data, ensure_ascii=False))
         response.headers['Content-Type'] = 'application/json; charset=utf-8'
         return response
 
