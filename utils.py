@@ -2,6 +2,7 @@ from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 import re
 import base64
+import json
 from config import Config
 
 class CryptoUtil:
@@ -23,6 +24,24 @@ class CryptoUtil:
         encrypted_data = base64.b64decode(encrypted_text)
         decrypted_data = unpad(cipher.decrypt(encrypted_data), AES.block_size)
         return decrypted_data.decode('utf-8')
+    
+    def decrypt_wx_phone(self, encrypted_data, iv, session_key):
+        """微信手机号解密"""
+        try:
+            # 使用session_key作为AES密钥
+            session_key_bytes = base64.b64decode(session_key)
+            iv_bytes = base64.b64decode(iv)
+            encrypted_data_bytes = base64.b64decode(encrypted_data)
+            
+            cipher = AES.new(session_key_bytes, AES.MODE_CBC, iv_bytes)
+            decrypted_data = unpad(cipher.decrypt(encrypted_data_bytes), AES.block_size)
+            decrypted_data_str = decrypted_data.decode('utf-8')
+            
+            # 解析JSON数据
+            phone_info = json.loads(decrypted_data_str)
+            return True, phone_info.get('phoneNumber')
+        except Exception as e:
+            return False, str(e)
 
 
 class SensitiveWordFilter:

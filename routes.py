@@ -8,6 +8,57 @@ import requests
 import config
 from sms import sms_client
 
+@app.route('/api/wx/get_openid', methods=['POST'])
+def wx_get_openid():
+    """获取微信用户openid接口"""
+    try:
+        data = request.get_json()
+        code = data.get('code')
+        
+        if not code:
+            response_data = {'code': 400, 'message': '参数错误'}
+            response = make_response(json.dumps(response_data, ensure_ascii=False))
+            response.headers['Content-Type'] = 'application/json; charset=utf-8'
+            return response
+        
+        # 调用微信API获取openid
+        wx_url = f'https://api.weixin.qq.com/sns/jscode2session?appid={config.Config.WX_APP_ID}&secret={config.Config.WX_APP_SECRET}&js_code={code}&grant_type=authorization_code'
+        wx_response = requests.get(wx_url)
+        wx_result = wx_response.json()
+        
+        if 'errcode' in wx_result:
+            response_data = {
+                'code': 400, 
+                'message': '获取openid失败',
+                'wx_error': {
+                    'errcode': wx_result.get('errcode'),
+                    'errmsg': wx_result.get('errmsg')
+                }
+            }
+            response = make_response(json.dumps(response_data, ensure_ascii=False))
+            response.headers['Content-Type'] = 'application/json; charset=utf-8'
+            return response
+        
+        # 返回openid
+        response_data = {
+            'code': 200,
+            'message': '获取成功',
+            'data': {
+                'openid': wx_result.get('openid')
+            }
+        }
+        response = make_response(json.dumps(response_data, ensure_ascii=False))
+        response.headers['Content-Type'] = 'application/json; charset=utf-8'
+        return response
+        
+    except Exception as e:
+        app.logger.error(f'获取openid失败: {str(e)}')
+        response_data = {'code': 500, 'message': '服务器内部错误'}
+        response = make_response(json.dumps(response_data, ensure_ascii=False))
+        response.headers['Content-Type'] = 'application/json; charset=utf-8'
+        return response
+
+
 @app.route('/api/wx/login', methods=['POST'])
 def wx_login():
     """微信授权登录接口"""
@@ -29,7 +80,14 @@ def wx_login():
         wx_result = wx_response.json()
         
         if 'errcode' in wx_result:
-            response_data = {'code': 400, 'message': '微信登录失败'}
+            response_data = {
+                'code': 400, 
+                'message': '微信登录失败',
+                'wx_error': {
+                    'errcode': wx_result.get('errcode'),
+                    'errmsg': wx_result.get('errmsg')
+                }
+            }
             response = make_response(json.dumps(response_data, ensure_ascii=False))
             response.headers['Content-Type'] = 'application/json; charset=utf-8'
             return response
@@ -38,11 +96,28 @@ def wx_login():
         session_key = wx_result.get('session_key')
         
         # 2. 解密手机号
-        # 注意：这里需要使用微信提供的解密算法，实际项目中需要实现完整的解密逻辑
-        # 简化处理，假设encrypted_data中包含手机号
-        phone_number = '13800138000'  # 实际应该从解密结果中获取
+        success, phone_number = crypto_util.decrypt_wx_phone(encrypted_data, iv, wx_result.get('session_key'))
+        if not success:
+            response_data = {
+                'code': 400, 
+                'message': '手机号解密失败',
+                'error': phone_number
+            }
+            response = make_response(json.dumps(response_data, ensure_ascii=False))
+            response.headers['Content-Type'] = 'application/json; charset=utf-8'
+            return response
         
-        # 3. 保存或更新用户信息
+        # 3. 验证手机号格式
+        if not validate_phone(phone_number):
+            response_data = {
+                'code': 400, 
+                'message': '手机号格式不正确'
+            }
+            response = make_response(json.dumps(response_data, ensure_ascii=False))
+            response.headers['Content-Type'] = 'application/json; charset=utf-8'
+            return response
+        
+        # 4. 保存或更新用户信息
         user = User.query.filter_by(openid=openid).first()
         if not user:
             # 创建新用户
@@ -54,13 +129,14 @@ def wx_login():
             db.session.add(user)
             db.session.commit()
         
-        # 4. 返回登录结果
+        # 5. 返回登录结果（脱敏手机号）
+        desensitized_phone = phone_number[:3] + '****' + phone_number[-4:]
         response_data = {
             'code': 200,
             'message': '登录成功',
             'data': {
                 'openid': openid,
-                'phone': phone_number  # 实际项目中不应返回完整手机号
+                'phone': desensitized_phone  # 返回脱敏后的手机号
             }
         }
         response = make_response(json.dumps(response_data, ensure_ascii=False))
@@ -210,6 +286,51 @@ def send_blessing():
         
     except Exception as e:
         app.logger.error(f'发送祝福失败: {str(e)}')
+        response_data = {'code': 500, 'message': '服务器内部错误'}
+        response = make_response(json.dumps(response_data, ensure_ascii=False))
+        response.headers['Content-Type'] = 'application/json; charset=utf-8'
+        return response
+
+
+@app.route('/api/user/phone', methods=['GET'])
+def get_user_phone():
+    """获取用户手机号接口"""
+    try:
+        # 获取请求参数
+        openid = request.args.get('openid')
+        
+        if not openid:
+            response_data = {'code': 400, 'message': '参数错误'}
+            response = make_response(json.dumps(response_data, ensure_ascii=False))
+            response.headers['Content-Type'] = 'application/json; charset=utf-8'
+            return response
+        
+        # 查询用户信息
+        user = User.query.filter_by(openid=openid).first()
+        if not user:
+            response_data = {'code': 404, 'message': '用户不存在'}
+            response = make_response(json.dumps(response_data, ensure_ascii=False))
+            response.headers['Content-Type'] = 'application/json; charset=utf-8'
+            return response
+        
+        # 解密手机号并脱敏
+        phone_number = crypto_util.decrypt(user.phone_number)
+        desensitized_phone = phone_number[:3] + '****' + phone_number[-4:]
+        
+        # 返回结果
+        response_data = {
+            'code': 200,
+            'message': '获取成功',
+            'data': {
+                'phone': desensitized_phone
+            }
+        }
+        response = make_response(json.dumps(response_data, ensure_ascii=False))
+        response.headers['Content-Type'] = 'application/json; charset=utf-8'
+        return response
+        
+    except Exception as e:
+        app.logger.error(f'获取用户手机号失败: {str(e)}')
         response_data = {'code': 500, 'message': '服务器内部错误'}
         response = make_response(json.dumps(response_data, ensure_ascii=False))
         response.headers['Content-Type'] = 'application/json; charset=utf-8'
