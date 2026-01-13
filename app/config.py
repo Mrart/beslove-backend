@@ -23,7 +23,7 @@ class Config:
     ALIYUN_SMS_TEMPLATE_CODE = os.environ.get('ALIYUN_SMS_TEMPLATE_CODE')
     
     # 加密配置
-    AES_KEY = os.environ.get('AES_KEY') or 'your-aes-key-32bytes'
+    AES_KEY = os.environ.get('AES_KEY') or 'your-aes-key-32bytes-exactly'  # 32字节密钥
     AES_IV = os.environ.get('AES_IV') or 'your-aes-iv-16bytes'
     
     # 风控配置
