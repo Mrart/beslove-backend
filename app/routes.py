@@ -32,7 +32,7 @@ def wx_get_openid():
             return response
         
         # 调用微信API获取session_key和openid
-        wx_url = f'https://api.weixin.qq.com/sns/jscode2session?appid={config.Config.WX_APP_ID}&secret={config.Config.WX_APP_SECRET}&js_code={code}&grant_type=authorization_code'
+        wx_url = f'https://api.weixin.qq.com/sns/jscode2session?appid={Config.WX_APP_ID}&secret={Config.WX_APP_SECRET}&js_code={code}&grant_type=authorization_code'
         wx_response = requests.get(wx_url)
         wx_result = wx_response.json()
         
@@ -98,7 +98,7 @@ def wx_login():
             return response
         
         # 1. 调用微信API获取session_key和openid
-        wx_url = f'https://api.weixin.qq.com/sns/jscode2session?appid={config.Config.WX_APP_ID}&secret={config.Config.WX_APP_SECRET}&js_code={code}&grant_type=authorization_code'
+        wx_url = f'https://api.weixin.qq.com/sns/jscode2session?appid={Config.WX_APP_ID}&secret={Config.WX_APP_SECRET}&js_code={code}&grant_type=authorization_code'
         wx_response = requests.get(wx_url)
         wx_result = wx_response.json()
         

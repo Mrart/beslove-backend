@@ -1,12 +1,12 @@
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 import re
-import config
+from app.config import Config
 
 # 加密函数 - AES-256
 def encrypt(data):
     """使用AES-256加密数据"""
-    cipher = AES.new(config.Config.AES_KEY.encode('utf-8'), AES.MODE_CBC, config.Config.AES_IV.encode('utf-8'))
+    cipher = AES.new(Config.AES_KEY.encode('utf-8'), AES.MODE_CBC, Config.AES_IV.encode('utf-8'))
     padded_data = pad(data.encode('utf-8'), AES.block_size)
     encrypted_data = cipher.encrypt(padded_data)
     return encrypted_data.hex()
@@ -14,7 +14,7 @@ def encrypt(data):
 # 解密函数 - AES-256
 def decrypt(encrypted_data):
     """使用AES-256解密数据"""
-    cipher = AES.new(config.Config.AES_KEY.encode('utf-8'), AES.MODE_CBC, config.Config.AES_IV.encode('utf-8'))
+    cipher = AES.new(Config.AES_KEY.encode('utf-8'), AES.MODE_CBC, Config.AES_IV.encode('utf-8'))
     decrypted_data = cipher.decrypt(bytes.fromhex(encrypted_data))
     unpadded_data = unpad(decrypted_data, AES.block_size)
     return unpadded_data.decode('utf-8')

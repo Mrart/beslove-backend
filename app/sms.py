@@ -1,5 +1,5 @@
 import uuid
-import config
+from app.config import Config
 from aliyunsdkcore.client import AcsClient
 from aliyunsdkcore.request import CommonRequest
 
@@ -9,19 +9,19 @@ class AliyunSMS:
     def __init__(self):
         # 初始化阿里云客户端
         self.client = AcsClient(
-            config.Config.ALIYUN_ACCESS_KEY_ID,
-            config.Config.ALIYUN_ACCESS_KEY_SECRET,
+            Config.ALIYUN_ACCESS_KEY_ID,
+            Config.ALIYUN_ACCESS_KEY_SECRET,
             'cn-hangzhou'
         )
         
-        self.sign_name = config.Config.ALIYUN_SMS_SIGN_NAME
-        self.template_code = config.Config.ALIYUN_SMS_TEMPLATE_CODE
+        self.sign_name = Config.ALIYUN_SMS_SIGN_NAME
+        self.template_code = Config.ALIYUN_SMS_TEMPLATE_CODE
     
     def send_sms(self, phone_number, content):
         """发送短信"""
         try:
             # 构建短信内容
-            sms_content = config.Config.SMS_TEMPLATE.format(content=content)
+            sms_content = Config.SMS_TEMPLATE.format(content=content)
             
             # 创建请求
             request = CommonRequest()
