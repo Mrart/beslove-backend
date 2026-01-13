@@ -327,3 +327,84 @@ curl -X GET https://www.beslove.cn/api/user/phone?openid=o1234567890
 ## 8. 部署说明
 
 请参考项目根目录下的`deploy_aliyun.md`文件进行部署。
+
+## 9. 日志管理
+
+### 9.1 Flask应用日志
+
+Flask应用日志记录了应用程序的运行情况、错误信息和用户请求等内容。
+
+**日志文件位置：**
+```
+/opt/beslove/app/logs/beslove.log
+```
+
+**查看日志方法：**
+```bash
+# 查看最新日志
+cat /opt/beslove/app/logs/beslove.log
+
+# 实时监控日志
+tail -f /opt/beslove/app/logs/beslove.log
+
+# 查看日志的最后100行
+tail -n 100 /opt/beslove/app/logs/beslove.log
+```
+
+**日志级别：**
+- DEBUG：详细调试信息
+- INFO：一般信息
+- WARNING：警告信息
+- ERROR：错误信息
+- CRITICAL：严重错误信息
+
+### 9.2 Systemd服务日志
+
+Systemd服务日志记录了应用程序的启动、停止和运行状态。
+
+**查看方法：**
+```bash
+# 查看beslove服务的日志
+journalctl -u beslove.service
+
+# 实时监控服务日志
+journalctl -u beslove.service -f
+
+# 查看最近的50条日志
+journalctl -u beslove.service -n 50
+
+# 查看特定时间范围内的日志
+journalctl -u beslove.service --since "2024-01-01" --until "2024-01-02"
+```
+
+### 9.3 Nginx日志
+
+Nginx日志记录了HTTP请求、响应和错误信息。
+
+**日志文件位置：**
+```
+# 访问日志
+/usr/local/nginx/logs/access.log
+
+# 错误日志
+/usr/local/nginx/logs/error.log
+```
+
+**查看方法：**
+```bash
+# 查看Nginx访问日志
+tail -f /usr/local/nginx/logs/access.log
+
+# 查看Nginx错误日志
+tail -f /usr/local/nginx/logs/error.log
+```
+
+### 9.4 日志分析
+
+通过分析日志，您可以：
+1. 了解应用程序的运行状态和性能
+2. 定位和解决错误问题
+3. 监控用户请求和行为
+4. 识别潜在的安全问题
+
+建议定期查看和分析日志，确保应用程序的正常运行。
