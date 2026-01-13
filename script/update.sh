@@ -276,7 +276,7 @@ User=root
 Group=root
 WorkingDirectory=/opt/beslove
 Environment="PATH=/opt/beslove/venv/bin"
-ExecStart=/opt/beslove/venv/bin/gunicorn -c /opt/beslove/app/gunicorn_config.py app:app
+ExecStart=/opt/beslove/venv/bin/gunicorn -c /opt/beslove/app/gunicorn_config.py app.app:app
 Restart=always
 
 [Install]
