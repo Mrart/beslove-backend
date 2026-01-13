@@ -4,7 +4,7 @@ import requests
 from app.app import app, db
 from app.config import Config
 from app.models import User
-from app.utils import CryptoUtil
+from app.utils import CryptoUtil, validate_phone
 import logging
 
 # 创建加密工具实例
