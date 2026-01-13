@@ -52,9 +52,9 @@ def wx_get_openid():
         session_key = wx_result.get('session_key')
         
         # 验证用户是否存在
-        user = User.query.filter_by(openid=openid).first()
-        if not user:
-            app.logger.info(f'openid获取成功但用户不存在，openid: {openid}')
+        # user = User.query.filter_by(openid=openid).first()
+        # if not user:
+        #     app.logger.info(f'openid获取成功但用户不存在，openid: {openid}')
         
         # 返回openid和session_key
         response_data = {
