@@ -214,7 +214,45 @@ curl -X GET https://www.beslove.cn/api/blessing/templates
 }
 ```
 
-### 3.5 发送祝福短信接口
+### 3.5 检查祝福发送限制接口
+
+**接口路径**: `/api/blessing/check-limit`
+**请求方法**: POST
+**功能描述**: 检查发送者今日发送次数和接收者今日接收次数是否超过限制
+
+#### 请求参数
+
+| 参数名 | 类型 | 是否必填 | 描述 |
+|--------|------|----------|------|
+| sender_openid | string | 是 | 发送者微信openid |
+| receiver_phone | string | 是 | 接收者手机号 |
+
+#### 请求示例
+
+```json
+{
+  "sender_openid": "oBzHC4tnDMxWcVmiFSbaXTEAWY-g",
+  "receiver_phone": "13800138000"
+}
+```
+
+#### 响应示例
+
+```json
+{
+  "code": 200,
+  "message": "检查成功",
+  "data": {
+    "is_over_limit": false,
+    "sender_count": 1,
+    "sender_limit": 3,
+    "receiver_count": 0,
+    "receiver_limit": 2
+  }
+}
+```
+
+### 3.6 发送祝福短信接口
 
 **接口路径**: `/api/blessing/send`
 **请求方法**: POST

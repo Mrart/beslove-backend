@@ -3,7 +3,7 @@ import json
 import requests
 from app.app import app, db
 from app.config import Config
-from app.models import User
+from app.models import User, BlessingMessage
 from app.utils import CryptoUtil, validate_phone
 import logging
 
@@ -382,6 +382,68 @@ def get_blessing_templates():
         
     except Exception as e:
         app.logger.error(f'获取祝福模板失败: {str(e)}')
+        response_data = {'code': 500, 'message': '服务器内部错误'}
+        response = make_response(json.dumps(response_data, ensure_ascii=False))
+        response.headers['Content-Type'] = 'application/json; charset=utf-8'
+        return response
+
+# 检查祝福发送限制接口
+@app.route('/api/blessing/check-limit', methods=['POST'])
+def check_blessing_limit():
+    """检查祝福发送限制接口"""
+    try:
+        data = request.get_json()
+        sender_openid = data.get('sender_openid')
+        receiver_phone = data.get('receiver_phone')
+        
+        app.logger.info(f'检查祝福发送限制，发送者openid: {sender_openid}, 接收者手机号: {receiver_phone}')
+        
+        if not sender_openid or not receiver_phone:
+            response_data = {'code': 400, 'message': '参数错误，缺少必要参数'}
+            response = make_response(json.dumps(response_data, ensure_ascii=False))
+            response.headers['Content-Type'] = 'application/json; charset=utf-8'
+            return response
+        
+        # 加密接收者手机号用于查询
+        encrypted_receiver_phone = crypto_util.encrypt(receiver_phone)
+        
+        # 计算24小时前的时间
+        from datetime import datetime, timedelta
+        one_day_ago = datetime.utcnow() - timedelta(days=1)
+        
+        # 检查发送者今日发送次数
+        sender_count = BlessingMessage.query.filter_by(sender_openid=sender_openid)\
+            .filter(BlessingMessage.sent_at >= one_day_ago).count()
+            
+        # 检查接收者今日接收次数
+        receiver_count = BlessingMessage.query.filter_by(receiver_phone=encrypted_receiver_phone)\
+            .filter(BlessingMessage.sent_at >= one_day_ago).count()
+        
+        # 获取配置的限制值
+        sender_limit = Config.SENDER_DAILY_LIMIT
+        receiver_limit = Config.RECEIVER_DAILY_LIMIT
+        
+        # 检查是否超过限制
+        is_over_limit = sender_count >= sender_limit or receiver_count >= receiver_limit
+        
+        response_data = {
+            'code': 200,
+            'message': '检查成功',
+            'data': {
+                'is_over_limit': is_over_limit,
+                'sender_count': sender_count,
+                'sender_limit': sender_limit,
+                'receiver_count': receiver_count,
+                'receiver_limit': receiver_limit
+            }
+        }
+        
+        response = make_response(json.dumps(response_data, ensure_ascii=False))
+        response.headers['Content-Type'] = 'application/json; charset=utf-8'
+        return response
+        
+    except Exception as e:
+        app.logger.error(f'检查祝福发送限制失败: {str(e)}')
         response_data = {'code': 500, 'message': '服务器内部错误'}
         response = make_response(json.dumps(response_data, ensure_ascii=False))
         response.headers['Content-Type'] = 'application/json; charset=utf-8'
