@@ -59,7 +59,6 @@ class AliyunSMS:
             logger.debug(f"请求参数：手机号={phone_number}, 签名={self.sign_name}, 模板={self.template_code}")
             logger.debug(f"模板参数对象：{template_param}")
             logger.debug(f"模板参数JSON：{template_param_json}, OutId={out_id}")
-            logger.debug(f"完整请求参数：{request._query_params}")
             
             # 发送请求
             logger.info("发送短信请求到阿里云")
