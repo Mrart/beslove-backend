@@ -10,9 +10,6 @@ import logging
 # 创建加密工具实例
 crypto_util = CryptoUtil()
 
-# 设置日志级别
-app.logger.setLevel(logging.INFO)
-
 # 测试接口
 @app.route('/api/test', methods=['GET'])
 def test():

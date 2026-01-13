@@ -106,6 +106,10 @@ echo ""
 # 步骤5: 检查配置文件
 echo "5. 检查配置文件..."
 
+# 检查并创建日志目录
+mkdir -p $PROJECT_DIR/app/logs
+chmod -R 755 $PROJECT_DIR/app/logs
+
 # 检查.env文件
 if [ ! -f "$PROJECT_DIR/.env" ]; then
     echo "警告: .env文件不存在，可能需要手动创建"

@@ -6,15 +6,7 @@ import json
 from app.config import Config
 import logging
 
-# 配置日志
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('app.log'),
-        logging.StreamHandler()
-    ]
-)
+# 使用应用的日志配置
 logger = logging.getLogger(__name__)
 
 class CryptoUtil:

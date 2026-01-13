@@ -150,7 +150,9 @@ EOF
 
 # 创建日志目录
 mkdir -p $LOG_DIR
-chmod 755 $LOG_DIR
+mkdir -p $PROJECT_DIR/app/logs
+chmod -R 755 $LOG_DIR
+chmod -R 755 $PROJECT_DIR/app/logs
 echo ""
 
 # 步骤8: 配置 Systemd 服务
@@ -253,10 +255,12 @@ echo "完成时间: $(date)"
 echo ""
 echo "下一步操作:"
 echo "1. 请编辑 /opt/beslove/.env 文件，配置必要的环境变量"
-echo "2. 初始化数据库: cd /opt/beslove && source venv/bin/activate && python init_db.py"
+echo "2. 初始化数据库: cd /opt/beslove && source venv/bin/activate && python -m app.init_db"
 echo "3. 配置域名: 编辑 /etc/nginx/conf.d/beslove.conf 中的 server_name"
 echo "4. 配置HTTPS: 运行 certbot --nginx -d www.beslove.cn"
 echo ""
-echo "详细日志可查看:"
-echo "- 应用日志: $LOG_DIR/error.log 和 $LOG_DIR/access.log"
+echo "日志查看指南:"
+echo "- 详细日志说明: 请查看 $PROJECT_DIR/docs/LOG_VIEW_GUIDE.md"
+echo "- 应用日志: $PROJECT_DIR/app/logs/beslove.log"
+echo "- Gunicorn日志: $LOG_DIR/error.log 和 $LOG_DIR/access.log"
 echo "- Nginx日志: /var/log/nginx/error.log 和 /var/log/nginx/access.log"
