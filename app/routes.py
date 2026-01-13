@@ -393,8 +393,8 @@ def check_blessing_limit():
     """检查祝福发送限制接口"""
     try:
         data = request.get_json()
-        sender_openid = data.get('openid')
-        receiver_phone = data.get('receiverPhone')
+        sender_openid = data.get('sender_openid')
+        receiver_phone = data.get('receiver_phone')
         
         app.logger.info(f'检查祝福发送限制，发送者openid: {sender_openid}, 接收者手机号: {receiver_phone}')
         
@@ -467,7 +467,34 @@ def send_blessing():
             response.headers['Content-Type'] = 'application/json; charset=utf-8'
             return response
         
-        # TODO: 实现发送祝福的逻辑，如存储祝福记录、发送短信等
+        # 1. 发送短信
+        from app.sms import sms_client
+        sms_success, sms_msg = sms_client.send_sms(receiver_phone, content)
+        
+        # 2. 加密接收者手机号
+        encrypted_receiver_phone = crypto_util.encrypt(receiver_phone)
+        
+        # 3. 存储祝福记录
+        from datetime import datetime
+        blessing_msg = BlessingMessage(
+            sender_openid=sender_openid,
+            receiver_phone=encrypted_receiver_phone,
+            content=content,
+            sent_at=datetime.utcnow(),
+            status='sent' if sms_success else 'failed'
+        )
+        db.session.add(blessing_msg)
+        db.session.commit()
+        
+        if not sms_success:
+            app.logger.error(f'发送祝福短信失败: {sms_msg}')
+            response_data = {
+                'code': 500,
+                'message': f'发送失败: {sms_msg}'
+            }
+            response = make_response(json.dumps(response_data, ensure_ascii=False))
+            response.headers['Content-Type'] = 'application/json; charset=utf-8'
+            return response
         
         response_data = {
             'code': 200,
@@ -533,6 +560,71 @@ def get_user_phone():
         
     except Exception as e:
         app.logger.error(f'获取用户手机号失败: {str(e)}')
+        response_data = {'code': 500, 'message': '服务器内部错误'}
+        response = make_response(json.dumps(response_data, ensure_ascii=False))
+        response.headers['Content-Type'] = 'application/json; charset=utf-8'
+        return response
+
+@app.route('/api/user/sent-blessings', methods=['GET'])
+def get_user_sent_blessings():
+    """查询用户已发送祝福接口"""
+    try:
+        # 获取请求参数
+        openid = request.args.get('openid')
+        
+        app.logger.info(f'查询用户已发送祝福请求，openid: {openid}')
+        
+        if not openid:
+            response_data = {'code': 400, 'message': '参数错误'}
+            response = make_response(json.dumps(response_data, ensure_ascii=False))
+            response.headers['Content-Type'] = 'application/json; charset=utf-8'
+            return response
+        
+        # 查询用户信息
+        user = User.query.filter_by(openid=openid).first()
+        if not user:
+            app.logger.warning(f'查询用户已发送祝福失败：用户不存在，openid: {openid}')
+            response_data = {'code': 404, 'message': '用户不存在'}
+            response = make_response(json.dumps(response_data, ensure_ascii=False))
+            response.headers['Content-Type'] = 'application/json; charset=utf-8'
+            return response
+        
+        # 查询用户发送的所有祝福消息
+        blessings = BlessingMessage.query.filter_by(sender_openid=openid)\
+            .order_by(BlessingMessage.sent_at.desc())\
+            .all()
+        
+        # 处理返回数据
+        blessing_list = []
+        for blessing in blessings:
+            # 解密接收者手机号并脱敏
+            receiver_phone = crypto_util.decrypt(blessing.receiver_phone)
+            desensitized_receiver = receiver_phone[:3] + '****' + receiver_phone[-4:]
+            
+            blessing_list.append({
+                'id': blessing.id,
+                'receiver_phone': desensitized_receiver,
+                'content': blessing.content,
+                'sent_at': blessing.sent_at.strftime('%Y-%m-%d %H:%M:%S'),
+                'status': blessing.status
+            })
+        
+        app.logger.info(f'查询用户已发送祝福成功，openid: {openid}, 数量: {len(blessing_list)}')
+        
+        # 返回结果
+        response_data = {
+            'code': 200,
+            'message': '获取成功',
+            'data': {
+                'blessings': blessing_list
+            }
+        }
+        response = make_response(json.dumps(response_data, ensure_ascii=False))
+        response.headers['Content-Type'] = 'application/json; charset=utf-8'
+        return response
+        
+    except Exception as e:
+        app.logger.error(f'查询用户已发送祝福失败: {str(e)}')
         response_data = {'code': 500, 'message': '服务器内部错误'}
         response = make_response(json.dumps(response_data, ensure_ascii=False))
         response.headers['Content-Type'] = 'application/json; charset=utf-8'

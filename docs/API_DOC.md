@@ -214,7 +214,7 @@ curl -X GET https://www.beslove.cn/api/blessing/templates
 }
 ```
 
-### 3.5 检查祝福发送限制接口
+### 3.6 检查祝福发送限制接口
 
 **接口路径**: `/api/blessing/check-limit`
 **请求方法**: POST
@@ -252,11 +252,11 @@ curl -X GET https://www.beslove.cn/api/blessing/templates
 }
 ```
 
-### 3.6 发送祝福短信接口
+### 3.7 发送祝福短信接口
 
 **接口路径**: `/api/blessing/send`
 **请求方法**: POST
-**功能描述**: 向指定手机号发送祝福短信
+**功能描述**: 向指定手机号发送祝福短信，并存储发送记录
 
 #### 请求参数
 
@@ -281,9 +281,11 @@ curl -X GET https://www.beslove.cn/api/blessing/templates
 ```json
 {
   "code": 200,
-  "message": "祝福发送成功",
+  "message": "发送成功",
   "data": {
-    "message_id": 1
+    "sender_openid": "oBzHC4tnDMxWcVmiFSbaXTEAWY-g",
+    "receiver_phone": "13800138000",
+    "content": "愿你被这个世界温柔以待"
   }
 }
 ```
@@ -293,11 +295,79 @@ curl -X GET https://www.beslove.cn/api/blessing/templates
 ```json
 {
   "code": 400,
-  "message": "祝福内容超过80个字符"
+  "message": "参数错误"
 }
 ```
 
-### 3.6 获取用户手机号接口
+```json
+{
+  "code": 500,
+  "message": "发送失败: 短信服务异常"
+}
+```
+
+### 3.8 查询用户已发送祝福接口
+
+**接口路径**: `/api/user/sent-blessings`
+**请求方法**: GET
+**功能描述**: 查询当前用户已发送的所有祝福短信记录
+
+#### 请求参数
+
+| 参数名 | 类型 | 是否必填 | 描述 |
+|--------|------|----------|------|
+| openid | string | 是 | 用户微信openid |
+
+#### 请求示例
+
+```
+curl -X GET "https://www.beslove.cn/api/user/sent-blessings?openid=oBzHC4tnDMxWcVmiFSbaXTEAWY-g"
+```
+
+#### 响应示例
+
+```json
+{
+  "code": 200,
+  "message": "获取成功",
+  "data": {
+    "blessings": [
+      {
+        "id": 1,
+        "receiver_phone": "138****8000",
+        "content": "愿你被这个世界温柔以待",
+        "sent_at": "2024-01-13 14:30:45",
+        "status": "sent"
+      },
+      {
+        "id": 2,
+        "receiver_phone": "139****1234",
+        "content": "愿你有一个灿烂的前程",
+        "sent_at": "2024-01-13 15:45:30",
+        "status": "sent"
+      }
+    ]
+  }
+}
+```
+
+#### 错误响应示例
+
+```json
+{
+  "code": 400,
+  "message": "参数错误"
+}
+```
+
+```json
+{
+  "code": 404,
+  "message": "用户不存在"
+}
+```
+
+### 3.9 获取用户手机号接口
 
 **接口路径**: `/api/user/phone`
 **请求方法**: GET
