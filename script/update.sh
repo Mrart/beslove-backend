@@ -264,6 +264,28 @@ echo ""
 # 步骤7: 启动服务
 echo "7. 启动服务..."
 
+# 更新systemd服务配置文件
+echo "更新systemd服务配置文件..."
+cat > /etc/systemd/system/beslove.service << 'EOF'
+[Unit]
+Description=BesLove Flask Application
+After=network.target
+
+[Service]
+User=root
+Group=root
+WorkingDirectory=/opt/beslove
+Environment="PATH=/opt/beslove/venv/bin"
+ExecStart=/opt/beslove/venv/bin/gunicorn -c /opt/beslove/app/gunicorn_config.py app:app
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# 重载systemd配置
+systemctl daemon-reload
+
 # 启动应用服务
 systemctl start beslove
 
