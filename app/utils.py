@@ -32,13 +32,13 @@ class CryptoUtil:
     def decrypt_wx_phone(self, encrypted_data, iv, session_key):
         """微信手机号解密"""
         try:
-            logger.info(f'开始解密微信手机号，encrypted_data长度: {len(encrypted_data)}, iv长度: {len(iv)}, session_key长度: {len(session_key)}')
-            
             # 参数有效性检查
             if not encrypted_data or not iv or not session_key:
                 logger.error('解密参数为空: encrypted_data=%s, iv=%s, session_key=%s', 
                            encrypted_data is not None, iv is not None, session_key is not None)
                 return False, '参数不能为空'
+            
+            logger.info(f'开始解密微信手机号，encrypted_data长度: {len(encrypted_data)}, iv长度: {len(iv)}, session_key长度: {len(session_key)}')
             
             # 解密前的数据格式转换
             try:

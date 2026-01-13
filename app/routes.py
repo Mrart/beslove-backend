@@ -242,7 +242,7 @@ def wx_get_phone():
             response.headers['Content-Type'] = 'application/json; charset=utf-8'
             return response
         
-        # 3. 获取加密的手机号数据
+        # 3. 获取手机号数据
         phone_info = phone_result.get('phone_info')
         if not phone_info:
             app.logger.error(f'微信返回数据中缺少phone_info: {phone_result}')
@@ -251,24 +251,28 @@ def wx_get_phone():
             response.headers['Content-Type'] = 'application/json; charset=utf-8'
             return response
         
-        encrypted_data = phone_info.get('encryptedData')
-        iv = phone_info.get('iv')
-        session_key = phone_info.get('session_key')
+        # 检查是否有直接的手机号字段（微信API可能直接返回明文）
+        phone_number = phone_info.get('phoneNumber')
+        if not phone_number:
+            # 如果没有直接的手机号，尝试解密
+            encrypted_data = phone_info.get('encryptedData')
+            iv = phone_info.get('iv')
+            session_key = phone_info.get('session_key')
+            
+            # 4. 解密手机号
+            success, phone_number = crypto_util.decrypt_wx_phone(encrypted_data, iv, session_key)
+            if not success:
+                app.logger.error(f'微信手机号解密失败: {phone_number}')
+                response_data = {
+                    'code': 400,
+                    'message': '手机号解密失败',
+                    'error': phone_number
+                }
+                response = make_response(json.dumps(response_data, ensure_ascii=False))
+                response.headers['Content-Type'] = 'application/json; charset=utf-8'
+                return response
         
-        # 4. 解密手机号
-        success, phone_number = crypto_util.decrypt_wx_phone(encrypted_data, iv, session_key)
-        if not success:
-            app.logger.error(f'微信手机号解密失败: {phone_number}')
-            response_data = {
-                'code': 400,
-                'message': '手机号解密失败',
-                'error': phone_number
-            }
-            response = make_response(json.dumps(response_data, ensure_ascii=False))
-            response.headers['Content-Type'] = 'application/json; charset=utf-8'
-            return response
-        
-        app.logger.info(f'微信手机号解密成功: {phone_number}')
+        app.logger.info(f'获取微信手机号成功: {phone_number}')
         
         # 5. 验证手机号格式
         if not validate_phone(phone_number):
