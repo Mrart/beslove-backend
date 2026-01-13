@@ -393,8 +393,8 @@ def check_blessing_limit():
     """检查祝福发送限制接口"""
     try:
         data = request.get_json()
-        sender_openid = data.get('sender_openid')
-        receiver_phone = data.get('receiver_phone')
+        sender_openid = data.get('openid')
+        receiver_phone = data.get('receiverPhone')
         
         app.logger.info(f'检查祝福发送限制，发送者openid: {sender_openid}, 接收者手机号: {receiver_phone}')
         
