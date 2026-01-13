@@ -24,7 +24,7 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 db = SQLAlchemy(app)
 
 # 导入路由
-from routes import *
+from app.routes import *
 
 if __name__ == '__main__':
     with app.app_context():

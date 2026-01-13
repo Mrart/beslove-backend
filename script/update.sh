@@ -82,24 +82,24 @@ if [ $? -ne 0 ]; then
 fi
 
 # 确保Gunicorn已安装
-$VENV_DIR/bin/pip install gunicorn
+    $VENV_DIR/bin/pip install gunicorn
 
-# 退出虚拟环境
-deactivate
-
-echo ""
-
-# 步骤4: 检查并初始化数据库（如果需要）
-echo "4. 检查并初始化数据库..."
-
-if [ -f "$PROJECT_DIR/init_db.py" ]; then
-    echo "发现数据库初始化脚本，执行初始化..."
-    source $VENV_DIR/bin/activate
-    python init_db.py
+    # 退出虚拟环境
     deactivate
-else
-    echo "未找到数据库初始化脚本，跳过此步骤"
-fi
+
+    echo ""
+
+    # 步骤4: 检查并初始化数据库（如果需要）
+    echo "4. 检查并初始化数据库..."
+
+    if [ -f "$PROJECT_DIR/app/init_db.py" ]; then
+        echo "发现数据库初始化脚本，执行初始化..."
+        source $VENV_DIR/bin/activate
+        python -m app.init_db
+        deactivate
+    else
+        echo "未找到数据库初始化脚本，跳过此步骤"
+    fi
 
 echo ""
 
@@ -218,7 +218,7 @@ http {
         listen 80;
         server_name www.beslove.cn;
         location ~ /.well-known {
-            root /opt/beslove/static;
+            root /opt/beslove/app/static;
             allow all;
         }
 

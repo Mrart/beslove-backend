@@ -1,16 +1,14 @@
-from flask import Flask, request, jsonify, make_response
+from flask import request, jsonify, make_response
 import json
 import requests
-from config import Config
-import config
-from models import db, User
-import crypto_util
-from utils import validate_phone
+from app.app import app, db
+from app.config import Config
+from app.models import User
+from app.utils import CryptoUtil
 import logging
 
-app = Flask(__name__)
-app.config.from_object(config.Config)
-db.init_app(app)
+# 创建加密工具实例
+crypto_util = CryptoUtil()
 
 # 设置日志级别
 app.logger.setLevel(logging.INFO)
@@ -162,7 +160,6 @@ def wx_login():
             )
             db.session.add(user)
             db.session.commit()
-            app.logger.info(f'微信登录，新用户创建成功，openid: {openid}')
         else:
             app.logger.info(f'微信登录，用户已存在，更新信息，openid: {openid}')
             # 更新手机号
