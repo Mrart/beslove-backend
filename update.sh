@@ -71,10 +71,10 @@ echo "3. 更新项目依赖..."
 source $VENV_DIR/bin/activate
 
 # 升级 pip
-pip install --upgrade pip
+$VENV_DIR/bin/pip install --upgrade pip
 
 # 更新项目依赖
-pip install -r requirements.txt
+$VENV_DIR/bin/pip install -r requirements.txt
 
 if [ $? -ne 0 ]; then
     echo "错误: 依赖安装失败，请检查requirements.txt文件"
@@ -82,7 +82,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # 确保Gunicorn已安装
-pip install gunicorn
+$VENV_DIR/bin/pip install gunicorn
 
 # 退出虚拟环境
 deactivate
@@ -118,57 +118,58 @@ fi
 echo ""
 
 # 步骤6: 更新Nginx配置和SSL证书
-    echo "6. 更新Nginx配置和SSL证书..."
+echo "6. 更新Nginx配置和SSL证书..."
 
-    # 定义Nginx配置路径
-    NGINX_MAIN_CONF="/usr/local/nginx/conf/nginx.conf"
+# 定义Nginx配置路径
+NGINX_MAIN_CONF="/usr/local/nginx/conf/nginx.conf"
 
-    # 检查Nginx是否已安装
-    if command -v nginx &> /dev/null; then
-        echo "Nginx已安装，配置路径: $NGINX_MAIN_CONF"
+# 检查Nginx是否已安装
+if command -v nginx &> /dev/null; then
+    echo "Nginx已安装，配置路径: $NGINX_MAIN_CONF"
+    
+    # 备份当前的主配置文件
+    cp $NGINX_MAIN_CONF "$NGINX_MAIN_CONF.$(date +%Y%m%d%H%M%S).bak"
+    echo "已备份当前Nginx主配置文件到: $NGINX_MAIN_CONF.$(date +%Y%m%d%H%M%S).bak"
+    
+    # 使用acme.sh管理SSL证书（已替换certbot）
+    echo "使用acme.sh管理SSL证书..."
+    
+    # 检查acme.sh是否已安装
+    if [ ! -f "/root/.acme.sh/acme.sh" ]; then
+        echo "安装acme.sh..."
+        wget -O acme.sh https://raw.githubusercontent.com/acmesh-official/acme.sh/master/acme.sh
+        chmod +x acme.sh
+        ./acme.sh --install --email admin@beslove.cn
+        rm -f acme.sh
+    fi
+    
+    # 检查SSL证书是否存在
+    if [ ! -f "/root/.acme.sh/www.beslove.cn_ecc/fullchain.cer" ]; then
+        echo "获取SSL证书..."
+        # 停止Nginx以允许acme.sh验证
+        kill -TERM $(pgrep -f "nginx") 2>/dev/null
+        sleep 2
         
-        # 备份当前的主配置文件
-        cp $NGINX_MAIN_CONF "$NGINX_MAIN_CONF.$(date +%Y%m%d%H%M%S).bak"
-        echo "已备份当前Nginx主配置文件到: $NGINX_MAIN_CONF.$(date +%Y%m%d%H%M%S).bak"
+        # 使用acme.sh获取证书
+        /root/.acme.sh/acme.sh --issue -d www.beslove.cn --standalone
         
-        # 安装certbot (ACME客户端) 用于获取Let's Encrypt证书
-        if ! command -v certbot &> /dev/null; then
-            echo "安装certbot..."
-            yum install -y certbot
-        fi
-        
-        # 检查SSL证书是否存在
-        if [ ! -f /etc/letsencrypt/live/www.beslove.cn/fullchain.pem ]; then
-            echo "获取SSL证书..."
-            # 停止Nginx以允许certbot验证
-            systemctl stop nginx
-            
-            # 使用certbot获取证书
-            certbot certonly --standalone --preferred-challenges http -d www.beslove.cn
-            
-            if [ $? -ne 0 ]; then
-                echo "警告: SSL证书获取失败，请手动检查"
-            else
-                echo "SSL证书获取成功"
-            fi
-            
-            # 重启Nginx
-            systemctl start nginx
+        if [ $? -ne 0 ]; then
+            echo "警告: SSL证书获取失败，请手动检查"
         else
-            echo "SSL证书已存在，跳过获取步骤"
+            echo "SSL证书获取成功"
         fi
-        
-        # 设置certbot自动续约
-        if ! crontab -l | grep -q "certbot renew"; then
-            echo "设置certbot自动续约..."
-            echo "0 12 * * * /usr/bin/certbot renew --post-hook 'systemctl reload nginx'" > /tmp/certbot_cron
-            crontab /tmp/certbot_cron
-            rm /tmp/certbot_cron
-            echo "certbot自动续约已设置"
+    else
+        echo "SSL证书已存在，检查是否需要续期..."
+        /root/.acme.sh/acme.sh --renew -d www.beslove.cn --force
+        if [ $? -eq 0 ]; then
+            echo "SSL证书已更新或无需续期"
+        else
+            echo "警告: SSL证书续期失败，请手动检查"
         fi
-        
-        # 创建一个完整的Nginx配置模板
-        cat > /tmp/nginx_template.conf << 'EOF'
+    fi
+    
+    # 创建一个完整的Nginx配置模板
+    cat > /tmp/nginx_template.conf << 'EOF'
 #user  nobody;
 worker_processes  1;
 
@@ -216,6 +217,10 @@ http {
     server {
         listen 80;
         server_name www.beslove.cn;
+        location ~ /.well-known {
+            root /opt/beslove/static;
+            allow all;
+        }
 
         location / {
             proxy_pass http://127.0.0.1:5000;
@@ -233,19 +238,20 @@ EOF
     
     echo "已更新Nginx主配置文件"
     
+    # 启动Nginx（如果之前停止了）
+    if ! pgrep -f "nginx" > /dev/null; then
+        echo "启动Nginx服务..."
+        /usr/local/nginx/sbin/nginx
+    fi
+    
     # 测试Nginx配置
     echo "测试Nginx配置..."
     /usr/local/nginx/sbin/nginx -t
     
     if [ $? -eq 0 ]; then
         echo "Nginx配置有效，重启服务..."
-        systemctl restart nginx
-        
-        if [ $? -eq 0 ]; then
-            echo "Nginx服务已重启成功"
-        else
-            echo "警告: Nginx服务重启失败，请手动检查"
-        fi
+        kill -HUP $(pgrep -f "nginx") 2>/dev/null
+        echo "Nginx服务已重新加载"
     else
         echo "警告: Nginx配置无效，请手动检查"
     fi
@@ -284,9 +290,9 @@ netstat -tlnp | grep 5000
 echo ""
 
 # 检查Nginx状态（如果正在使用）
-if systemctl is-active --quiet nginx; then
+if pgrep -f "nginx" > /dev/null; then
     echo "Nginx状态:"
-    systemctl status nginx -l | head -n 10
+    ps aux | grep nginx | head -n 10
 fi
 
 echo ""
@@ -297,9 +303,5 @@ echo ""
 echo "更新内容:"
 echo "1. 代码已更新到最新版本"
 echo "2. 项目依赖已更新"
-echo "3. Nginx配置已更新到www.beslove.cn"
-echo "4. 应用服务已重启"
-echo "5. Nginx服务已重启（如果已安装）"
-echo ""
-echo "检查应用日志: tail -f /var/log/beslove/error.log"
-echo "检查访问日志: tail -f /var/log/beslove/access.log"
+echo "3. Nginx配置和SSL证书已更新"
+echo "4. 应用服务已启动"
