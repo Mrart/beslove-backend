@@ -469,6 +469,7 @@ def send_blessing():
         
         # 1. 发送短信
         from app.sms import sms_client
+        app.logger.info(f'发送祝福内容: {content}, 内容长度: {len(content)}')
         sms_success, sms_msg = sms_client.send_sms(receiver_phone, content)
         
         # 2. 加密接收者手机号

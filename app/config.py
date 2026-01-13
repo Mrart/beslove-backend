@@ -20,6 +20,7 @@ class Config:
     ALIYUN_ACCESS_KEY_ID = os.environ.get('ALIYUN_ACCESS_KEY_ID')
     ALIYUN_ACCESS_KEY_SECRET = os.environ.get('ALIYUN_ACCESS_KEY_SECRET')
     ALIYUN_SMS_SIGN_NAME = 'BesLove'
+    # 注意：必须使用支持中文内容的短信模板，不能使用验证码模板
     ALIYUN_SMS_TEMPLATE_CODE = os.environ.get('ALIYUN_SMS_TEMPLATE_CODE')
     
     # 加密配置

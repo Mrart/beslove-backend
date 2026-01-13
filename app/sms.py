@@ -47,11 +47,19 @@ class AliyunSMS:
             request.add_query_param('PhoneNumbers', phone_number)
             request.add_query_param('SignName', self.sign_name)
             request.add_query_param('TemplateCode', self.template_code)
-            request.add_query_param('TemplateParam', f'{{"content":"{content}"}}')
+            
+            # 处理模板参数 - 根据阿里云模板要求调整
+            import json
+            template_param = {"content": content}
+            template_param_json = json.dumps(template_param)
+            
+            request.add_query_param('TemplateParam', template_param_json)
             request.add_query_param('OutId', out_id)
             
             logger.debug(f"请求参数：手机号={phone_number}, 签名={self.sign_name}, 模板={self.template_code}")
-            logger.debug(f"模板参数：{{\"content\":\"{content}\"}}, OutId={out_id}")
+            logger.debug(f"模板参数对象：{template_param}")
+            logger.debug(f"模板参数JSON：{template_param_json}, OutId={out_id}")
+            logger.debug(f"完整请求参数：{request._query_params}")
             
             # 发送请求
             logger.info("发送短信请求到阿里云")
