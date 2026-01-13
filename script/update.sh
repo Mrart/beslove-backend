@@ -213,10 +213,33 @@ http {
         }
     }
 
-    # BesLove backend server block (HTTP only for now)
+    # BesLove backend server block (HTTP to HTTPS redirect)
     server {
         listen 80;
         server_name www.beslove.cn;
+        location ~ /.well-known {
+            root /opt/beslove/app/static;
+            allow all;
+        }
+
+        # Redirect HTTP to HTTPS
+        return 301 https://$host$request_uri;
+    }
+
+    # BesLove backend server block (HTTPS)
+    server {
+        listen 443 ssl http2;
+        server_name www.beslove.cn;
+
+        # SSL certificate configuration
+        ssl_certificate /root/.acme.sh/www.beslove.cn_ecc/fullchain.cer;
+        ssl_certificate_key /root/.acme.sh/www.beslove.cn_ecc/www.beslove.cn.key;
+        ssl_session_cache shared:SSL:1m;
+        ssl_session_timeout 5m;
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_ciphers HIGH:!aNULL:!MD5;
+        ssl_prefer_server_ciphers on;
+
         location ~ /.well-known {
             root /opt/beslove/app/static;
             allow all;
