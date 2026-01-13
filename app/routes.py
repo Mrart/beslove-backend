@@ -187,6 +187,140 @@ def wx_login():
         response.headers['Content-Type'] = 'application/json; charset=utf-8'
         return response
 
+# 微信手机号获取接口
+@app.route('/api/wx/phone', methods=['POST'])
+def wx_get_phone():
+    """获取微信用户手机号接口"""
+    try:
+        data = request.get_json()
+        code = data.get('code')
+        openid = data.get('openid')
+        
+        app.logger.info(f'微信手机号获取请求，code: {code}, openid: {openid}')
+        
+        if not code or not openid:
+            response_data = {'code': 400, 'message': '参数错误'}
+            response = make_response(json.dumps(response_data, ensure_ascii=False))
+            response.headers['Content-Type'] = 'application/json; charset=utf-8'
+            return response
+        
+        # 1. 获取微信access_token
+        access_token_url = f'https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid={Config.WX_APP_ID}&secret={Config.WX_APP_SECRET}'
+        access_token_response = requests.get(access_token_url)
+        access_token_result = access_token_response.json()
+        
+        app.logger.info(f'获取微信access_token返回: {access_token_result}')
+        
+        if 'errcode' in access_token_result:
+            app.logger.error(f'获取微信access_token失败: {access_token_result}')
+            response_data = {
+                'code': 400,
+                'message': '获取微信access_token失败',
+                'wx_error': access_token_result
+            }
+            response = make_response(json.dumps(response_data, ensure_ascii=False))
+            response.headers['Content-Type'] = 'application/json; charset=utf-8'
+            return response
+        
+        access_token = access_token_result.get('access_token')
+        
+        # 2. 调用微信phonenumber.getPhoneNumber接口
+        phone_url = f'https://api.weixin.qq.com/wxa/business/getuserphonenumber?access_token={access_token}'
+        phone_payload = {'code': code}
+        phone_response = requests.post(phone_url, json=phone_payload)
+        phone_result = phone_response.json()
+        
+        app.logger.info(f'调用微信getPhoneNumber返回: {phone_result}')
+        
+        if 'errcode' in phone_result and phone_result['errcode'] != 0:
+            app.logger.error(f'调用微信getPhoneNumber失败: {phone_result}')
+            response_data = {
+                'code': 400,
+                'message': '获取手机号失败',
+                'wx_error': phone_result
+            }
+            response = make_response(json.dumps(response_data, ensure_ascii=False))
+            response.headers['Content-Type'] = 'application/json; charset=utf-8'
+            return response
+        
+        # 3. 获取加密的手机号数据
+        phone_info = phone_result.get('phone_info')
+        if not phone_info:
+            app.logger.error(f'微信返回数据中缺少phone_info: {phone_result}')
+            response_data = {'code': 400, 'message': '获取手机号数据失败'}
+            response = make_response(json.dumps(response_data, ensure_ascii=False))
+            response.headers['Content-Type'] = 'application/json; charset=utf-8'
+            return response
+        
+        encrypted_data = phone_info.get('encryptedData')
+        iv = phone_info.get('iv')
+        session_key = phone_info.get('session_key')
+        
+        # 4. 解密手机号
+        success, phone_number = crypto_util.decrypt_wx_phone(encrypted_data, iv, session_key)
+        if not success:
+            app.logger.error(f'微信手机号解密失败: {phone_number}')
+            response_data = {
+                'code': 400,
+                'message': '手机号解密失败',
+                'error': phone_number
+            }
+            response = make_response(json.dumps(response_data, ensure_ascii=False))
+            response.headers['Content-Type'] = 'application/json; charset=utf-8'
+            return response
+        
+        app.logger.info(f'微信手机号解密成功: {phone_number}')
+        
+        # 5. 验证手机号格式
+        if not validate_phone(phone_number):
+            app.logger.error(f'手机号格式不正确: {phone_number}')
+            response_data = {
+                'code': 400,
+                'message': '手机号格式不正确'
+            }
+            response = make_response(json.dumps(response_data, ensure_ascii=False))
+            response.headers['Content-Type'] = 'application/json; charset=utf-8'
+            return response
+        
+        # 6. 保存或更新用户信息
+        user = User.query.filter_by(openid=openid).first()
+        if not user:
+            # 创建新用户
+            app.logger.info(f'创建新用户，openid: {openid}, 手机号: {phone_number}')
+            encrypted_phone = crypto_util.encrypt(phone_number)
+            user = User(
+                openid=openid,
+                phone_number=encrypted_phone
+            )
+            db.session.add(user)
+        else:
+            app.logger.info(f'用户已存在，更新手机号，openid: {openid}, 手机号: {phone_number}')
+            # 更新手机号
+            encrypted_phone = crypto_util.encrypt(phone_number)
+            user.phone_number = encrypted_phone
+        
+        db.session.commit()
+        app.logger.info(f'用户手机号更新成功，openid: {openid}')
+        
+        # 7. 返回完整手机号
+        response_data = {
+            'code': 200,
+            'message': '获取成功',
+            'data': {
+                'phone': phone_number
+            }
+        }
+        response = make_response(json.dumps(response_data, ensure_ascii=False))
+        response.headers['Content-Type'] = 'application/json; charset=utf-8'
+        return response
+        
+    except Exception as e:
+        app.logger.error(f'获取微信手机号失败: {str(e)}')
+        response_data = {'code': 500, 'message': '服务器内部错误'}
+        response = make_response(json.dumps(response_data, ensure_ascii=False))
+        response.headers['Content-Type'] = 'application/json; charset=utf-8'
+        return response
+
 # 获取祝福模板接口
 @app.route('/api/blessing/templates', methods=['GET'])
 def get_blessing_templates():

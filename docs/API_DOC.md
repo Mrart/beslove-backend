@@ -124,7 +124,61 @@ curl -X GET "https://www.beslove.cn/api/wx/get_openid?code=001013000000000000000
 }
 ```
 
-### 3.4 获取祝福模板接口
+### 3.4 微信手机号获取接口
+
+**接口路径**: `/api/wx/phone`
+**请求方法**: POST
+**功能描述**: 通过微信手机号授权code获取完整手机号
+
+#### 请求参数
+
+| 参数名 | 类型 | 是否必填 | 描述 |
+|--------|------|----------|------|
+| code | string | 是 | 微信手机号授权临时凭证code |
+| openid | string | 是 | 用户微信openid |
+
+#### 请求示例
+
+```json
+{
+  "code": "e31912b58097ee09334f3887090c5b3e43101b17",
+  "openid": "oBzHC4tnDMxWcVmiFSbaXTEAWY-g"
+}
+```
+
+#### 响应示例
+
+```json
+{
+  "code": 200,
+  "message": "获取成功",
+  "data": {
+    "phone": "13800138000"
+  }
+}
+```
+
+#### 错误响应示例
+
+```json
+{
+  "code": 400,
+  "message": "参数错误"
+}
+```
+
+```json
+{
+  "code": 400,
+  "message": "获取手机号失败",
+  "wx_error": {
+    "errcode": 41001,
+    "errmsg": "access_token missing"
+  }
+}
+```
+
+### 3.5 获取祝福模板接口
 
 **接口路径**: `/api/blessing/templates`
 **请求方法**: GET
