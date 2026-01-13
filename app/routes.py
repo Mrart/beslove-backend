@@ -188,24 +188,12 @@ def wx_login():
         return response
 
 # 微信手机号获取接口
-@app.route('/api/wx/phone', methods=['GET', 'POST'])
+@app.route('/api/wx/phone', methods=['GET'])
 def wx_get_phone():
     """获取微信用户手机号接口"""
-    # 处理GET请求，返回方法不允许的提示
-    if request.method == 'GET':
-        response_data = {
-            'code': 405,
-            'message': '请求方法不允许，请使用POST方法访问此接口',
-            'error': 'Method Not Allowed'
-        }
-        response = make_response(json.dumps(response_data, ensure_ascii=False))
-        response.headers['Content-Type'] = 'application/json; charset=utf-8'
-        return response
-    
     try:
-        data = request.get_json()
-        code = data.get('code')
-        openid = data.get('openid')
+        code = request.args.get('code')
+        openid = request.args.get('openid')
         
         app.logger.info(f'微信手机号获取请求，code: {code}, openid: {openid}')
         

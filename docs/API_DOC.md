@@ -81,7 +81,7 @@ curl -X GET "https://www.beslove.cn/api/wx/get_openid?code=001013000000000000000
 ### 3.3 微信登录接口
 
 **接口路径**: `/api/wx/login`
-**请求方法**: POST
+**请求方法**: GET
 **功能描述**: 微信授权登录，获取用户手机号并创建/更新用户信息
 
 #### 请求参数
@@ -127,7 +127,7 @@ curl -X GET "https://www.beslove.cn/api/wx/get_openid?code=001013000000000000000
 ### 3.4 微信手机号获取接口
 
 **接口路径**: `/api/wx/phone`
-**请求方法**: POST
+**请求方法**: GET
 **功能描述**: 通过微信手机号授权code获取完整手机号
 
 #### 请求参数
@@ -139,11 +139,8 @@ curl -X GET "https://www.beslove.cn/api/wx/get_openid?code=001013000000000000000
 
 #### 请求示例
 
-```json
-{
-  "code": "e31912b58097ee09334f3887090c5b3e43101b17",
-  "openid": "oBzHC4tnDMxWcVmiFSbaXTEAWY-g"
-}
+```
+curl -X GET "https://www.beslove.cn/api/wx/phone?code=e31912b58097ee09334f3887090c5b3e43101b17&openid=oBzHC4tnDMxWcVmiFSbaXTEAWY-g"
 ```
 
 #### 响应示例
