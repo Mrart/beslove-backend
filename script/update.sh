@@ -227,7 +227,7 @@ http {
         }
 
         # Redirect HTTP to HTTPS
-        return 301 https://$host$request_uri;
+        return 307 https://$host$request_uri;
     }
 
     # BesLove backend server block (HTTPS)

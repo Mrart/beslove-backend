@@ -407,7 +407,7 @@ HTTPS_CONFIG="server {
 server {
     listen 80;
     server_name $DOMAIN;
-    return 301 https://$DOMAIN$request_uri;
+    return 307 https://$DOMAIN$request_uri;
 }
 
 # HTTPS配置
