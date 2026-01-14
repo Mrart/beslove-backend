@@ -252,7 +252,61 @@ curl -X GET https://www.beslove.cn/api/blessing/templates
 }
 ```
 
-### 3.7 发送祝福接口
+### 3.7 删除祝福接口
+
+**接口路径**: `/api/blessing/delete`
+**请求方法**: POST
+**功能描述**: 删除用户已发送的祝福
+
+#### 请求参数
+
+| 参数名 | 类型 | 是否必填 | 描述 |
+|--------|------|----------|------|
+| id | integer | 是 | 祝福ID |
+| openid | string | 是 | 发送者微信openid |
+
+#### 请求示例
+
+```json
+{
+  "id": 1,
+  "openid": "oBzHC4tnDMxWcVmiFSbaXTEAWY-g"
+}
+```
+
+#### 响应示例
+
+```json
+{
+  "code": 200,
+  "message": "删除成功"
+}
+```
+
+#### 错误响应示例
+
+```json
+{
+  "code": 400,
+  "message": "参数错误"
+}
+```
+
+```json
+{
+  "code": 404,
+  "message": "祝福不存在"
+}
+```
+
+```json
+{
+  "code": 403,
+  "message": "没有权限删除此祝福"
+}
+```
+
+### 3.8 发送祝福接口
 
 **接口路径**: `/api/blessing/send`
 **请求方法**: POST
@@ -306,7 +360,7 @@ curl -X GET https://www.beslove.cn/api/blessing/templates
 }
 ```
 
-### 3.8 查询用户已发送祝福接口
+### 3.9 查询用户已发送祝福接口
 
 **接口路径**: `/api/user/sent-blessings`
 **请求方法**: GET
@@ -367,7 +421,7 @@ curl -X GET "https://www.beslove.cn/api/user/sent-blessings?openid=oBzHC4tnDMxWc
 }
 ```
 
-### 3.9 获取用户手机号接口
+### 3.10 获取用户手机号接口
 
 **接口路径**: `/api/user/phone`
 **请求方法**: GET
@@ -406,7 +460,7 @@ curl -X GET "https://www.beslove.cn/api/user/phone?openid=oBzHC4tnDMxWcVmiFSbaXT
 }
 ```
 
-### 3.10 查看收到的祝福接口
+### 3.11 查看收到的祝福接口
 
 **接口路径**: `/api/blessing/received`
 **请求方法**: GET

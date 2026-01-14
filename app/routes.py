@@ -498,6 +498,60 @@ def get_received_blessings():
         response.headers['Content-Type'] = 'application/json; charset=utf-8'
         return response
 
+# 删除祝福接口
+@app.route('/api/blessing/delete', methods=['POST'])
+def delete_blessing():
+    """删除祝福接口"""
+    try:
+        data = request.get_json()
+        blessing_id = data.get('id')
+        openid = data.get('openid')
+        
+        app.logger.info(f'删除祝福请求，祝福id: {blessing_id}, 用户openid: {openid}')
+        
+        if not blessing_id or not openid:
+            response_data = {'code': 400, 'message': '参数错误'}
+            response = make_response(json.dumps(response_data, ensure_ascii=False))
+            response.headers['Content-Type'] = 'application/json; charset=utf-8'
+            return response
+        
+        # 查询祝福记录
+        blessing = BlessingMessage.query.filter_by(id=blessing_id).first()
+        
+        if not blessing:
+            response_data = {'code': 404, 'message': '祝福不存在'}
+            response = make_response(json.dumps(response_data, ensure_ascii=False))
+            response.headers['Content-Type'] = 'application/json; charset=utf-8'
+            return response
+        
+        # 验证是否是发送者本人删除
+        if blessing.sender_openid != openid:
+            response_data = {'code': 403, 'message': '没有权限删除此祝福'}
+            response = make_response(json.dumps(response_data, ensure_ascii=False))
+            response.headers['Content-Type'] = 'application/json; charset=utf-8'
+            return response
+        
+        # 删除祝福记录
+        db.session.delete(blessing)
+        db.session.commit()
+        
+        app.logger.info(f'删除祝福成功，祝福id: {blessing_id}, 用户openid: {openid}')
+        
+        response_data = {
+            'code': 200,
+            'message': '删除成功'
+        }
+        response = make_response(json.dumps(response_data, ensure_ascii=False))
+        response.headers['Content-Type'] = 'application/json; charset=utf-8'
+        return response
+    
+    except Exception as e:
+        app.logger.error(f'删除祝福失败: {str(e)}')
+        response_data = {'code': 500, 'message': '服务器错误'}
+        response = make_response(json.dumps(response_data, ensure_ascii=False))
+        response.headers['Content-Type'] = 'application/json; charset=utf-8'
+        return response
+
 # 发送祝福接口
 @app.route('/api/blessing/send', methods=['POST'])
 def send_blessing():
