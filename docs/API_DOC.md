@@ -427,7 +427,7 @@ curl -X GET "https://www.beslove.cn/api/user/sent-blessings?openid=oBzHC4tnDMxWc
 
 **接口路径**: `/api/user/phone`
 **请求方法**: GET
-**功能描述**: 获取当前用户的手机号（脱敏处理）
+**功能描述**: 根据openid获取用户手机号（脱敏）
 
 #### 请求参数
 
@@ -446,7 +446,7 @@ curl -X GET "https://www.beslove.cn/api/user/phone?openid=oBzHC4tnDMxWcVmiFSbaXT
 ```json
 {
   "code": 200,
-  "message": "获取成功",
+  "message": "查询成功",
   "data": {
     "phone": "138****1234"
   }
@@ -462,7 +462,99 @@ curl -X GET "https://www.beslove.cn/api/user/phone?openid=oBzHC4tnDMxWcVmiFSbaXT
 }
 ```
 
-### 3.11 查看收到的祝福接口
+### 3.11 发送短信验证码接口
+
+**接口路径**: `/api/sms/send-code`
+**请求方法**: POST
+**功能描述**: 向指定手机号发送验证码短信
+
+#### 请求参数
+
+| 参数名 | 类型 | 是否必填 | 描述 |
+|--------|------|----------|------|
+| phone | string | 是 | 接收验证码的手机号 |
+
+#### 请求示例
+
+```json
+{
+  "phone": "13800138000"
+}
+```
+
+#### 响应示例
+
+```json
+{
+  "code": 200,
+  "message": "验证码发送成功，请注意查收"
+}
+```
+
+#### 错误响应示例
+
+```json
+{
+  "code": 400,
+  "message": "手机号格式不正确"
+}
+```
+
+```json
+{
+  "code": 500,
+  "message": "验证码发送失败：系统错误"
+}
+```
+
+### 3.12 验证短信验证码接口
+
+**接口路径**: `/api/sms/verify-code`
+**请求方法**: POST
+**功能描述**: 验证短信验证码是否有效
+
+#### 请求参数
+
+| 参数名 | 类型 | 是否必填 | 描述 |
+|--------|------|----------|------|
+| phone | string | 是 | 接收验证码的手机号 |
+| code | string | 是 | 收到的验证码 |
+
+#### 请求示例
+
+```json
+{
+  "phone": "13800138000",
+  "code": "123456"
+}
+```
+
+#### 响应示例
+
+```json
+{
+  "code": 200,
+  "message": "验证码验证成功"
+}
+```
+
+#### 错误响应示例
+
+```json
+{
+  "code": 400,
+  "message": "验证码不存在或已失效"
+}
+```
+
+```json
+{
+  "code": 400,
+  "message": "验证码已过期或已使用"
+}
+```
+
+### 3.13 查看收到的祝福接口
 
 **接口路径**: `/api/blessing/received`
 **请求方法**: GET
@@ -556,6 +648,18 @@ curl -X GET "https://www.beslove.cn/api/blessing/received?phone=13800138000"
 | content | string | 祝福内容 |
 | sent_at | datetime | 发送时间 |
 | status | string | 状态(stored:已存储到数据库, pending:待发送, sent:发送成功, failed:发送失败) |
+| is_deleted | boolean | 是否被发送者删除（逻辑删除） |
+
+### 5.3 短信验证码(SmsVerification)
+
+| 字段名 | 类型 | 描述 |
+|--------|------|------|
+| id | integer | 验证码ID，主键 |
+| phone_number | string | 加密存储的手机号 |
+| verification_code | string | 验证码 |
+| created_at | datetime | 创建时间 |
+| expires_at | datetime | 过期时间（默认10分钟） |
+| used | boolean | 是否已使用 |
 
 ## 6. 部署说明
 

@@ -10,6 +10,12 @@ import logging
 # 创建加密工具实例
 crypto_util = CryptoUtil()
 
+# 导入其他需要的模块
+import random
+import string
+from app.sms import sms_client
+from app.models import SmsVerification
+
 # 测试接口
 @app.route('/api/test', methods=['GET'])
 def test():
@@ -319,6 +325,157 @@ def wx_get_phone():
         
     except Exception as e:
         app.logger.error(f'获取微信手机号失败: {str(e)}')
+        response_data = {'code': 500, 'message': '服务器内部错误'}
+        response = make_response(json.dumps(response_data, ensure_ascii=False))
+        response.headers['Content-Type'] = 'application/json; charset=utf-8'
+        return response
+
+# 生成并发送短信验证码接口
+@app.route('/api/sms/send-code', methods=['POST'])
+def send_sms_verification():
+    """发送短信验证码接口"""
+    try:
+        # 获取请求参数
+        data = request.get_json()
+        phone_number = data.get('phone')
+        
+        app.logger.info(f'短信验证码发送请求，手机号: {phone_number}')
+        
+        # 验证参数
+        if not phone_number:
+            response_data = {'code': 400, 'message': '缺少手机号参数'}
+            response = make_response(json.dumps(response_data, ensure_ascii=False))
+            response.headers['Content-Type'] = 'application/json; charset=utf-8'
+            return response
+        
+        # 验证手机号格式
+        if not validate_phone(phone_number):
+            response_data = {'code': 400, 'message': '手机号格式不正确'}
+            response = make_response(json.dumps(response_data, ensure_ascii=False))
+            response.headers['Content-Type'] = 'application/json; charset=utf-8'
+            return response
+        
+        # 生成6位数字验证码
+        verification_code = ''.join(random.choices(string.digits, k=6))
+        app.logger.info(f'生成验证码: {verification_code}，手机号: {phone_number}')
+        
+        # 加密手机号
+        encrypted_phone = crypto_util.encrypt(phone_number)
+        
+        # 检查是否已有未过期的验证码
+        existing_verifications = SmsVerification.query.filter_by(
+            phone_number=encrypted_phone,
+            used=False
+        ).filter(SmsVerification.expires_at > datetime.utcnow()).all()
+        
+        # 将已有未过期验证码标记为已使用
+        for verification in existing_verifications:
+            verification.used = True
+            app.logger.info(f'标记旧验证码为已使用: {verification.id}')
+        
+        # 创建新的验证码记录
+        new_verification = SmsVerification(
+            phone_number=encrypted_phone,
+            verification_code=verification_code
+        )
+        
+        # 调用短信服务发送验证码
+        sms_content = f'您的验证码是：{verification_code}，请勿泄露给他人。'
+        sms_success, sms_message = sms_client.send_sms(phone_number, verification_code)
+        
+        if sms_success:
+            # 保存到数据库
+            db.session.add(new_verification)
+            db.session.commit()
+            app.logger.info(f'短信验证码发送成功，手机号: {phone_number}，验证码: {verification_code}')
+            
+            response_data = {
+                'code': 200,
+                'message': '验证码发送成功，请注意查收'
+            }
+        else:
+            app.logger.error(f'短信验证码发送失败，手机号: {phone_number}，错误信息: {sms_message}')
+            response_data = {
+                'code': 500,
+                'message': f'验证码发送失败：{sms_message}'
+            }
+        
+        response = make_response(json.dumps(response_data, ensure_ascii=False))
+        response.headers['Content-Type'] = 'application/json; charset=utf-8'
+        return response
+        
+    except Exception as e:
+        app.logger.error(f'发送短信验证码异常: {str(e)}')
+        response_data = {'code': 500, 'message': '服务器内部错误'}
+        response = make_response(json.dumps(response_data, ensure_ascii=False))
+        response.headers['Content-Type'] = 'application/json; charset=utf-8'
+        return response
+
+# 验证短信验证码接口
+@app.route('/api/sms/verify-code', methods=['POST'])
+def verify_sms_code():
+    """验证短信验证码接口"""
+    try:
+        # 获取请求参数
+        data = request.get_json()
+        phone_number = data.get('phone')
+        verification_code = data.get('code')
+        
+        app.logger.info(f'短信验证码验证请求，手机号: {phone_number}，验证码: {verification_code}')
+        
+        # 验证参数
+        if not phone_number or not verification_code:
+            response_data = {'code': 400, 'message': '缺少手机号或验证码参数'}
+            response = make_response(json.dumps(response_data, ensure_ascii=False))
+            response.headers['Content-Type'] = 'application/json; charset=utf-8'
+            return response
+        
+        # 验证手机号格式
+        if not validate_phone(phone_number):
+            response_data = {'code': 400, 'message': '手机号格式不正确'}
+            response = make_response(json.dumps(response_data, ensure_ascii=False))
+            response.headers['Content-Type'] = 'application/json; charset=utf-8'
+            return response
+        
+        # 加密手机号
+        encrypted_phone = crypto_util.encrypt(phone_number)
+        
+        # 查询最新的未过期未使用的验证码
+        verification = SmsVerification.query.filter_by(
+            phone_number=encrypted_phone,
+            verification_code=verification_code
+        ).order_by(SmsVerification.created_at.desc()).first()
+        
+        if not verification:
+            response_data = {'code': 400, 'message': '验证码不存在或已失效'}
+            response = make_response(json.dumps(response_data, ensure_ascii=False))
+            response.headers['Content-Type'] = 'application/json; charset=utf-8'
+            return response
+        
+        # 检查验证码是否有效
+        if not verification.is_valid():
+            response_data = {'code': 400, 'message': '验证码已过期或已使用'}
+            response = make_response(json.dumps(response_data, ensure_ascii=False))
+            response.headers['Content-Type'] = 'application/json; charset=utf-8'
+            return response
+        
+        # 标记验证码为已使用
+        verification.used = True
+        db.session.commit()
+        
+        app.logger.info(f'短信验证码验证成功，手机号: {phone_number}，验证码: {verification_code}')
+        
+        response_data = {
+            'code': 200,
+            'message': '验证码验证成功'
+        }
+        
+        response = make_response(json.dumps(response_data, ensure_ascii=False))
+        response.headers['Content-Type'] = 'application/json; charset=utf-8'
+        return response
+        
+    except Exception as e:
+        app.logger.error(f'验证短信验证码异常: {str(e)}')
         response_data = {'code': 500, 'message': '服务器内部错误'}
         response = make_response(json.dumps(response_data, ensure_ascii=False))
         response.headers['Content-Type'] = 'application/json; charset=utf-8'
