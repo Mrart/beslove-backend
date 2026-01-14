@@ -6,6 +6,7 @@ class User(db.Model):
     
     openid = db.Column(db.String(100), primary_key=True, unique=True, nullable=False)
     phone_number = db.Column(db.String(200), nullable=False)  # 加密存储的手机号
+    nick_name = db.Column(db.String(50), nullable=True)  # 用户微信昵称
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     
     def __repr__(self):

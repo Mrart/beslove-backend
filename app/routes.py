@@ -465,15 +465,19 @@ def get_received_blessings():
         # 加密手机号用于查询
         encrypted_phone = crypto_util.encrypt(phone)
         
-        # 查询该手机号收到的所有祝福
+        # 查询该手机号收到的所有祝福，包含发送者信息
         blessings = BlessingMessage.query.filter_by(receiver_phone=encrypted_phone).order_by(BlessingMessage.sent_at.desc()).all()
         
         # 格式化返回数据
         blessing_list = []
         for blessing in blessings:
+            # 获取发送者的微信名称
+            sender_name = blessing.sender.nick_name if blessing.sender and blessing.sender.nick_name else "匿名用户"
+            
             blessing_list.append({
                 'id': blessing.id,
                 'sender_openid': blessing.sender_openid,
+                'sender_name': sender_name,  # 添加发送者微信名称
                 'content': blessing.content,
                 'sent_at': blessing.sent_at.strftime('%Y-%m-%d %H:%M:%S'),
                 'status': blessing.status
@@ -559,16 +563,25 @@ def send_blessing():
     try:
         data = request.get_json()
         sender_openid = data.get('sender_openid')
+        sender_nickname = data.get('sender_nickname')
         receiver_phone = data.get('receiver_phone')
         content = data.get('content')
         
-        app.logger.info(f'发送祝福请求，发送者openid: {sender_openid}, 接收者手机号: {receiver_phone}')
+        app.logger.info(f'发送祝福请求，发送者openid: {sender_openid}, 接收者手机号: {receiver_phone}, 发送者昵称: {sender_nickname}')
         
         if not sender_openid or not receiver_phone or not content:
             response_data = {'code': 400, 'message': '参数错误'}
             response = make_response(json.dumps(response_data, ensure_ascii=False))
             response.headers['Content-Type'] = 'application/json; charset=utf-8'
             return response
+        
+        # 更新用户微信昵称
+        if sender_nickname:
+            user = User.query.filter_by(openid=sender_openid).first()
+            if user:
+                user.nick_name = sender_nickname
+                db.session.commit()
+                app.logger.info(f'更新用户昵称成功: {sender_openid} -> {sender_nickname}')
         
         # 1. 加密接收者手机号
         encrypted_receiver_phone = crypto_util.encrypt(receiver_phone)

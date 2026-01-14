@@ -317,6 +317,7 @@ curl -X GET https://www.beslove.cn/api/blessing/templates
 | 参数名 | 类型 | 是否必填 | 描述 |
 |--------|------|----------|------|
 | sender_openid | string | 是 | 发送者微信openid |
+| sender_nickname | string | 否 | 发送者微信昵称 |
 | receiver_phone | string | 是 | 接收者手机号 |
 | content | string | 是 | 祝福内容，最长80个字符 |
 
@@ -325,6 +326,7 @@ curl -X GET https://www.beslove.cn/api/blessing/templates
 ```json
 {
   "sender_openid": "oBzHC4tnDMxWcVmiFSbaXTEAWY-g",
+  "sender_nickname": "张三",
   "receiver_phone": "13800138000",
   "content": "愿你被这个世界温柔以待"
 }
@@ -489,6 +491,7 @@ curl -X GET "https://www.beslove.cn/api/blessing/received?phone=13800138000"
       {
         "id": 1,
         "sender_openid": "oBzHC4tnDMxWcVmiFSbaXTEAWY-g",
+        "sender_name": "张三",
         "content": "愿你被这个世界温柔以待",
         "sent_at": "2024-01-13 14:30:45",
         "status": "stored"
@@ -496,6 +499,7 @@ curl -X GET "https://www.beslove.cn/api/blessing/received?phone=13800138000"
       {
         "id": 2,
         "sender_openid": "oBzHC4tnDMxWcVmiFSbaXTEAWY-g",
+        "sender_name": "匿名用户",
         "content": "愿你有一个灿烂的前程",
         "sent_at": "2024-01-13 15:45:30",
         "status": "stored"
@@ -539,6 +543,7 @@ curl -X GET "https://www.beslove.cn/api/blessing/received?phone=13800138000"
 |--------|------|------|
 | openid | string | 用户微信openid，主键 |
 | phone_number | string | 加密存储的用户手机号 |
+| nick_name | string | 用户微信昵称 |
 | created_at | datetime | 用户创建时间 |
 
 ### 5.2 祝福消息(BlessingMessage)
