@@ -252,11 +252,11 @@ curl -X GET https://www.beslove.cn/api/blessing/templates
 }
 ```
 
-### 3.7 发送祝福短信接口
+### 3.7 发送祝福接口
 
 **接口路径**: `/api/blessing/send`
 **请求方法**: POST
-**功能描述**: 向指定手机号发送祝福短信，并存储发送记录
+**功能描述**: 向指定手机号发送祝福，只存储到数据库，不实际发送短信
 
 #### 请求参数
 
@@ -406,6 +406,68 @@ curl -X GET "https://www.beslove.cn/api/user/phone?openid=oBzHC4tnDMxWcVmiFSbaXT
 }
 ```
 
+### 3.10 查看收到的祝福接口
+
+**接口路径**: `/api/blessing/received`
+**请求方法**: GET
+**功能描述**: 查看指定手机号收到的所有祝福
+
+#### 请求参数
+
+| 参数名 | 类型 | 是否必填 | 描述 |
+|--------|------|----------|------|
+| phone | string | 是 | 接收者手机号 |
+
+#### 请求示例
+
+```
+curl -X GET "https://www.beslove.cn/api/blessing/received?phone=13800138000"
+```
+
+#### 响应示例
+
+```json
+{
+  "code": 200,
+  "message": "查询成功",
+  "data": {
+    "blessings": [
+      {
+        "id": 1,
+        "sender_openid": "oBzHC4tnDMxWcVmiFSbaXTEAWY-g",
+        "content": "愿你被这个世界温柔以待",
+        "sent_at": "2024-01-13 14:30:45",
+        "status": "stored"
+      },
+      {
+        "id": 2,
+        "sender_openid": "oBzHC4tnDMxWcVmiFSbaXTEAWY-g",
+        "content": "愿你有一个灿烂的前程",
+        "sent_at": "2024-01-13 15:45:30",
+        "status": "stored"
+      }
+    ],
+    "total": 2
+  }
+}
+```
+
+#### 错误响应示例
+
+```json
+{
+  "code": 400,
+  "message": "参数错误"
+}
+```
+
+```json
+{
+  "code": 500,
+  "message": "服务器错误"
+}
+```
+
 ## 4. 错误码说明
 
 | 错误码 | 错误描述 |
@@ -425,16 +487,16 @@ curl -X GET "https://www.beslove.cn/api/user/phone?openid=oBzHC4tnDMxWcVmiFSbaXT
 | phone_number | string | 加密存储的用户手机号 |
 | created_at | datetime | 用户创建时间 |
 
-### 5.2 祝福短信(BlessingMessage)
+### 5.2 祝福消息(BlessingMessage)
 
 | 字段名 | 类型 | 描述 |
 |--------|------|------|
-| id | integer | 短信ID，主键 |
+| id | integer | 消息ID，主键 |
 | sender_openid | string | 发送者openid，外键 |
 | receiver_phone | string | 加密存储的接收者手机号 |
 | content | string | 祝福内容 |
 | sent_at | datetime | 发送时间 |
-| status | string | 发送状态(pending/sent/failed) |
+| status | string | 状态(stored:已存储到数据库, pending:待发送, sent:发送成功, failed:发送失败) |
 
 ## 6. 部署说明
 
