@@ -535,8 +535,8 @@ def delete_blessing():
             response.headers['Content-Type'] = 'application/json; charset=utf-8'
             return response
         
-        # 删除祝福记录
-        db.session.delete(blessing)
+        # 逻辑删除祝福记录（仅对发送者隐藏，接收者仍可见）
+        blessing.is_deleted = True
         db.session.commit()
         
         app.logger.info(f'删除祝福成功，祝福id: {blessing_id}, 用户openid: {openid}')
@@ -691,8 +691,8 @@ def get_user_sent_blessings():
             response.headers['Content-Type'] = 'application/json; charset=utf-8'
             return response
         
-        # 查询用户发送的所有祝福消息
-        blessings = BlessingMessage.query.filter_by(sender_openid=openid)\
+        # 查询用户发送的所有未删除的祝福消息
+        blessings = BlessingMessage.query.filter_by(sender_openid=openid, is_deleted=False)\
             .order_by(BlessingMessage.sent_at.desc())\
             .all()
         

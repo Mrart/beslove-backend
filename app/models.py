@@ -21,6 +21,7 @@ class BlessingMessage(db.Model):
     content = db.Column(db.String(100), nullable=False)  # 祝福内容，最多80个字符
     sent_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     status = db.Column(db.String(20), nullable=False, default='pending')  # pending, sent, failed
+    is_deleted = db.Column(db.Boolean, nullable=False, default=False)  # 是否被发送者删除
     
     # 建立关系
     sender = db.relationship('User', backref=db.backref('blessings', lazy=True))
